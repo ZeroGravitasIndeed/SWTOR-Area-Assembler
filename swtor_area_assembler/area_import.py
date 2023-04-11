@@ -368,13 +368,18 @@ class addonMenuItem(Operator, ImportHelper):
                     # return that information.
                     
                     objects_before_importing = list(bpy.data.objects)
-                    with suppress_stdout():  # To silence Darth Atroxa's print() outputs
-                        result = bpy.ops.import_mesh.gr2(filepath = str( Path(resources_folderpath) / Path(swtor_filepath) ))
-                    if result == "CANCELLED":
-                        print(f"\n\nWARNING: .gr2 imported addon failed to import {swtor_id} - {str( Path(resources_folderpath) / Path(swtor_filepath) )}\n")
+                    try:
+                        with suppress_stdout():  # To silence Darth Atroxa's print() outputs
+                            result = bpy.ops.import_mesh.gr2(filepath = str( Path(resources_folderpath) / Path(swtor_filepath) ))
+                        if result == "CANCELLED":
+                            print(f"\n\nWARNING: .gr2 importer addon failed to import {swtor_id} - {str( Path(resources_folderpath) / Path(swtor_filepath) )}\n")
+                            continue
+                        else:
+                            print("IMPORTED    ", end="")
+                    except:
+                        print(f"\n\nWARNING: the .gr2 Importer addon CRASHED while importing:\n{swtor_id} - {str( Path(resources_folderpath) / Path(swtor_filepath) )}\n")
+                        print("Despite that, the Area Importer addon will keep on importing the rest of the objects")
                         continue
-                    else:
-                        print("IMPORTED    ", end="")
                     objects_after_importing = list(bpy.data.objects)
                     imported_objects = list(set(objects_after_importing) - set(objects_before_importing))
                     imported_objects_amount = len(imported_objects)
