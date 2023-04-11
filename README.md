@@ -1,4 +1,4 @@
-# SWTOR Area Assembler
+# SWTOR Area Assembler, by ZeroGravitas and Crunch
 swtor_area_assembler is a Blender addon that imports Jedipedia.com's File Reader-exported .json location data into Blender and parses it to auto-import and assemble the area's objects. It shows up in Blender's Import menu. If it appears greyed out, that means it lacks one or both of the following:
 
 * The latest version of SWTOR Slicers' [.gr2 Importer Addon](https://github.com/SWTOR-Slicers/Granny2-Plug-In-Blender-2.8x),
