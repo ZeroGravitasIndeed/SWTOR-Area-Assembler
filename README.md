@@ -9,3 +9,5 @@ in order to be able to import SWTOR objects into Blender. If you are still using
 It is recommended to toggle Blender's System Console to watch the addon's progress when in use, as there are no other progress indicators yet.
 
 Download the Addon from **[here](https://github.com/SWTOR-Slicers/SWTOR-Area-Assembler/releases/download/v1.0.0/swtor_area_assembler.zip)**.
+
+Provisional instructions on how to produce the requisite area data .json files in **[this PDF](https://raw.githubusercontent.com/SWTOR-Slicers/SWTOR-Area-Assembler/main/How%20to%20export%20SWTOR%20area%20data.pdf)**.
