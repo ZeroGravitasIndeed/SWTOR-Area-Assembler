@@ -5,6 +5,7 @@ from mathutils import Matrix
 from pathlib import Path
 import os
 import time
+import datetime
 
 # These imports are for a "hide console output" fn
 import contextlib
@@ -22,15 +23,12 @@ import sys
 # ImportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
 from bpy_extras.io_utils import ImportHelper
-from bpy.props import StringProperty, BoolProperty, EnumProperty
-from bpy.types import Operator
-
 from bpy.props import (BoolProperty,
-                       FloatProperty,
                        StringProperty,
-                       EnumProperty,
                        CollectionProperty
                        )
+from bpy.types import Operator
+
 
 class addonMenuItem(Operator, ImportHelper):
     bl_label = "Import Area .json"
@@ -81,30 +79,24 @@ class addonMenuItem(Operator, ImportHelper):
     )
     SAAboolApplyFinalRotation: BoolProperty(
         name="Apply Final Rotation",
-        description="Disable to skip final rotation. All objects will need to be rotated X Axis 90 Degrees.",
+        description="Disable to skip final rotation. All objects will need to be rotated X Axis 90 Degrees",
         default=True,
     )
     SAAboolApplySceneScale: BoolProperty(
         name="Apply Scene Scale",
-        description="Automatically scale the entire scene after import by 10x to better match Blender Units.",
+        description="Automatically scale the entire scene after import by 10x to better match Blender Units",
         default=False,
     )
     SAAboolMergeMultiObjects: BoolProperty(
         name="Merge Multi-Objects",
-        description="Joins single .gr2 file-originated multi-objects\ninto single objects, speeding up scene import.",
+        description="Joins single .gr2 file-originated multi-objects\ninto single objects, speeding up scene import",
         default=False,
     )
-    # SAACollecionHierarchyOptions: EnumProperty(
-    #     name="Sort in Collections by",
-    #     description="Sort the imported elements in Collections as.",
-    #     items=[
-    #         ("ITEM_1", "Room \/ Objects and Room \/ Lights", "Room \/ Objects and Room \/ Lights"),
-    #         ("ITEM_2", "Objects \/ Room and Lights \/ Room", "Objects \/ Room and Lights \/ Room"),
-    #         ("ITEM_3", "Objects and Lights", "Objects and Lights"),
-    #     ],
-    #     default="ITEM_1",
-    # )
-
+    SAAboolHideAfterImport: BoolProperty(
+        name="Hide Collections In Viewport After Importing",
+        description="All resulting Collections are hidden ('eye' icon in Outliner')\nto keep Blender responsive when under a massive load of objects.\nRecommended when importing whole worlds",
+        default=False,
+    )
     
     # Register some properties in the object class for helping
     # dealing with them in certain phases of the process
@@ -191,9 +183,10 @@ class addonMenuItem(Operator, ImportHelper):
                 
                 # For console output formatting stuff
                 if "assetName" in element:
-                    if (".gr2" in element["assetName"]
-                        or ".lit" in element["assetName"]
-                        or ("dbo" in element["assetName"] and self.SAAboolSkipDBOObjects == False) ):
+                    if (".gr2" in element["assetName"] or
+                        ".hms" in element["assetName"] or
+                        ".lit" in element["assetName"] or
+                        ("dbo" in element["assetName"] and self.SAAboolSkipDBOObjects == False) ):
                         swtor_name_length = len(Path(element["assetName"]).stem)
                         if swtor_name_length > max_swtor_name_length:
                             max_swtor_name_length = swtor_name_length
@@ -205,10 +198,8 @@ class addonMenuItem(Operator, ImportHelper):
 
 
 
+            # Create Collections.
 
-
-
-            # Create some Collections:
             # Main location collection inside the Scene's root "Scene Collection".
             if not json_name in bpy.data.collections:
                 location_collection = bpy.data.collections.new(json_name)
@@ -223,6 +214,14 @@ class addonMenuItem(Operator, ImportHelper):
             else:
                 location_objects_collection = bpy.data.collections[json_name + " - Objects"]
 
+            # Location's terrain.
+            if not (json_name + " - Terrain") in bpy.data.collections:
+                location_terrains_collection = bpy.data.collections.new(json_name + " - Terrain")
+                location_collection.children.link(location_terrains_collection)
+            else:
+                location_terrains_collection = bpy.data.collections[json_name + " - Terrain"]
+                
+
             # Location's lights if the user wants them (yes by default)
             if self.SAAboolCreateSceneLights == True:
                 if not (json_name + " - Lights") in bpy.data.collections:
@@ -230,6 +229,7 @@ class addonMenuItem(Operator, ImportHelper):
                     location_collection.children.link(location_lights_collection)
                 else:
                     location_lights_collection  = bpy.data.collections[json_name + " - Lights"]
+
 
 
 
@@ -286,7 +286,8 @@ class addonMenuItem(Operator, ImportHelper):
         # multi-object's filepath: [parent object's name]: 
         already_existing_objects = {}
 
-
+        # List to hold the terrain objects being imported
+        terrains = []
 
 
         # Percentage of progress stuff. It's based on number
@@ -313,6 +314,7 @@ class addonMenuItem(Operator, ImportHelper):
             swtor_filepath = item["assetName"]
             if not (swtor_filepath.endswith("gr2") or
                     swtor_filepath.endswith("lit") or
+                    swtor_filepath.endswith("hms") or
                     ("dbo" in swtor_filepath and self.SAAboolSkipDBOObjects == False)
                     ):
                 continue
@@ -332,6 +334,8 @@ class addonMenuItem(Operator, ImportHelper):
             if swtor_id in bpy.data.objects:
                 continue
 
+            
+
 
             if swtor_filepath.endswith("lit"):
 
@@ -349,6 +353,49 @@ class addonMenuItem(Operator, ImportHelper):
                     Lights_count += 1
                 else:
                     continue
+
+
+            elif swtor_filepath.endswith("hms"):
+
+                # TERRAIN OBJECT. ---------------------------------
+
+                print(f'{items_processed * 100 / items_to_process:6.2f} %   AREA: {json_name:<{max_json_name_length}}   ID: {swtor_id}   -- TERRAIN OBJECT --   ', end="")
+
+                # Collection where the light object will be moved to
+                location_terrains_collection  = bpy.data.collections[json_name + " - Terrain"]
+
+                terrain_path=str(Path(resources_folderpath) / "world" / "heightmaps" / (swtor_id + ".obj") )
+
+
+                # ACTUAL IMPORTING:
+                # …through Blender's bpy.ops.import_scene.obj addon.
+                # Does a after-minus-before bpy.data.objects check to determine
+                # the objects resulting from the importing, as the addon doesn't
+                # return that information.
+
+                objects_before_importing = list(bpy.data.objects)
+                try:
+                    with suppress_stdout():  # To silence .obj importing outputs
+                        result = bpy.ops.import_scene.obj(
+                            filepath=terrain_path,
+                            use_image_search=False)  # .obj importer
+                    if result == "CANCELLED":
+                        print(f"\n           WARNING: .gr2 importer addon failed to import {swtor_id} - {str( Path(resources_folderpath) / Path(swtor_filepath) )}\n")
+                        continue
+                    else:
+                        print("IMPORTED")
+                except:
+                    print(f"\n\n           WARNING: Blender's .obj Importer CRASHED while trying to import it.")
+                    print("           Despite that, the Area Importer addon will keep on importing the rest of the objects.\n")
+                    continue
+                objects_after_importing = list(bpy.data.objects)
+                imported_objects_amount = 1
+                blender_object = list(set(objects_after_importing) - set(objects_before_importing))[0]
+                blender_object.name = swtor_id
+
+                link_objects_to_collection(blender_object, location_terrains_collection, move = True)
+
+
 
             else:
 
@@ -422,8 +469,6 @@ class addonMenuItem(Operator, ImportHelper):
                             parent_with_transformations(multi_object_child, imported_objects[0], inherit_transformations = False)
 
                         print("MULTI-OBJECT", end="")
-
-
 
 
 
@@ -562,6 +607,8 @@ class addonMenuItem(Operator, ImportHelper):
 
 
 
+
+
             # After all this processing, there's only one object,
             # to transform, no matter if imported, duplicated, and
             # parenting the rest of a multi-object.
@@ -572,17 +619,18 @@ class addonMenuItem(Operator, ImportHelper):
             # would lead to extra nested rotations after the general
             # parenting stage that we don't know how to correct.
 
-            position = [item["position"][0], 
-                        item["position"][1],
-                        item["position"][2]]
+            if not swtor_name.endswith("hms"):
+                position = [item["position"][0], 
+                            item["position"][1],
+                            item["position"][2]]
             
-            rotation = [radians( item["rotation"][0]), 
-                        radians( item["rotation"][1]),
-                        radians( item["rotation"][2])]
+                rotation = [radians( item["rotation"][0]), 
+                            radians( item["rotation"][1]),
+                            radians( item["rotation"][2])]
 
-            scale =    [item["scale"][0], 
-                        item["scale"][1],
-                        item["scale"][2]]
+                scale =    [item["scale"][0], 
+                            item["scale"][1],
+                            item["scale"][2]]
 
             blender_object.location = position
             blender_object.rotation_mode = 'ZXY'
@@ -592,7 +640,6 @@ class addonMenuItem(Operator, ImportHelper):
             # Resize lights to something more reasonable
             if swtor_name.endswith("lit"):
                 scale = scale / 10
-
 
             # Fill custom properties to the object to facilitate
             # other processes.
@@ -618,34 +665,38 @@ class addonMenuItem(Operator, ImportHelper):
 
         # Parenting pass
 
-        print("\n\nPARENTING OBJECTS PASS:\n----------------------\n")
+        print("\n\nPARENTING OBJECTS LOOP:\n----------------------\n")
 
+        items_processed = 0
         for item in swtor_location_data:
+            items_processed += 1
             swtor_id = item["id"]
             if swtor_id in bpy.data.objects:
                 swtor_parent_id = item["parent"]
                 if swtor_parent_id != "0":
                     if swtor_parent_id in bpy.data.objects:
-                        print(f"Parenting  {swtor_id}  to  {swtor_parent_id}")
+                        print(f"{items_processed * 100 / items_to_process:6.2f} %  Parenting  {swtor_id}  to  {swtor_parent_id}")
                         parent_with_transformations(bpy.data.objects[swtor_id], bpy.data.objects[swtor_parent_id], inherit_transformations = True)
                     else:
-                        print(f"Parenting  {swtor_id}  to  {swtor_parent_id} FAILED!!! Parent doesn't exist")
+                        print(f"{items_processed * 100 / items_to_process:6.2f} %  Parenting  {swtor_id}  to  {swtor_parent_id} FAILED!!! Parent doesn't exist")
 
         bpy.ops.object.select_all(action="DESELECT")
         bpy.context.view_layer.objects.active = None
 
 
-
         # Renaming pass
 
-        print("\n\nRENAMING OBJECTS PASS:\n---------------------\n")
+        print("\n\nRENAMING OBJECTS LOOP:\n---------------------\n")
 
+        items_processed = 0
         for item in swtor_location_data:
+            items_processed += 1
             swtor_id = item["id"]
             if swtor_id in bpy.data.objects:
-                swtor_name = Path(item["assetName"]).stem 
-                bpy.data.objects[swtor_id].name = swtor_name
-                print(f"Renaming  {swtor_id}  {swtor_name}")
+                swtor_name = Path(item["assetName"]).stem
+                if swtor_name != "heightmap":
+                    bpy.data.objects[swtor_id].name = swtor_name
+                    print(f"{items_processed * 100 / items_to_process:6.2f} %  Renaming  {swtor_id}  {swtor_name}")
 
 
 
@@ -669,7 +720,7 @@ class addonMenuItem(Operator, ImportHelper):
     # some final housekeeping -------------------------------------------------------
     # -------------------------------------------------------------------------------
 
-        # If number of "imported" lights exceeds 100, hide their collections
+        # If number of "imported" lights exceeds 100, exclude their collections from view
         if self.SAAboolCreateSceneLights and Lights_count > 100:
             view_layer = bpy.context.view_layer
             for collection in view_layer.layer_collection.children:
@@ -677,6 +728,12 @@ class addonMenuItem(Operator, ImportHelper):
                 # iterate_collections(collection, hide_collection_children)
 
 
+        # If Hide after Import is on, exclude the collections from view
+        if self.SAAboolHideAfterImport:
+            view_layer = bpy.context.view_layer
+            for collection in view_layer.layer_collection.children:
+                if collection.name in json_names:
+                    collection.exclude = True
 
 
 
@@ -698,16 +755,18 @@ class addonMenuItem(Operator, ImportHelper):
         print("MERGE MULTI-MESH OBJECTS ", str(self.SAAboolMergeMultiObjects))
         print("APPLY FINAL ROTATION: ", str(self.SAAboolApplyFinalRotation))
         print("APPLY SCENE SCALE: ", str(self.SAAboolApplySceneScale))
-        print("-------------------------------")
+        print("------------------------------------------")
         if self.SAAboolCreateSceneLights and Lights_count > 100:
             print("Number of lights in the area exceeds 100.")
             print("Their Collections have been hidden to help")
             print("Blender's responsiveness.")
-            print("-------------------------------")
+            print("------------------------------------------")
 
         end_time = time.time()
-        print(f"Task executed in {int(end_time - start_time)!s} seconds")
-        print("-------------------------------")
+        total_time = end_time - start_time
+
+        print(f"Task executed in hh:mm:ss.ms = {str(datetime.timedelta(seconds=total_time))[:-3]}")
+        print("------------------------------------------")
         print("\nALL DONE!\n\nHAVE A NICE DAY.\n\nBYE <3!")
     
         return {'FINISHED'}
@@ -803,7 +862,6 @@ def exclude_collection_lights(collection):
 def hide_collection_children(collection):
     for child in collection.children:
         child.hide_viewport = True
-        # child.hide_render = True
 
 def link_objects_to_collection (objects, collection, move = False):
     """
@@ -1054,4 +1112,3 @@ def scalescene():
                             release_confirm=True)
         
     return
-    
