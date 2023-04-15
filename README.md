@@ -16,4 +16,4 @@ ___
 v.1.1.0:
 - New Hide Collections In Viewport After Importing option. When importing, it unticks the checkboxes of the per-location (.json file) Collections. Meant for massive importations of location data, such as when importing whole SWTOR worlds (a Dromund Kaas, a Coruscant). By disabling the Collections in the View Layer, Blender won't get stuck under the weight of so many objects to visualize and will let us save the project immediately or do some organization without lagging hard.
 
-- Basic support for importing pre-generated terrain patches (that requires a heightmap-to-.obj tool that is still in progress.
+- Basic support for importing pre-generated terrain patches (that requires a heightmap-to-.obj tool that is still in progress).
