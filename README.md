@@ -12,7 +12,7 @@ Download the latest version of the Addon from **[here](https://github.com/SWTOR-
 
 Provisional instructions on how to produce the requisite area data .json files in **[this PDF](https://raw.githubusercontent.com/SWTOR-Slicers/SWTOR-Area-Assembler/main/How%20to%20export%20SWTOR%20area%20data.pdf)**.
 
-
+___
 v.1.1.0:
 - New Hide Collections In Viewport After Importing option. When importing, it unticks the checkboxes of the per-location (.json file) Collections. Meant for massive importations of location data, such as when importing whole SWTOR worlds (a Dromund Kaas, a Coruscant). By disabling the Collections in the View Layer, Blender won't get stuck under the weight of so many objects to visualize and will let us save the project immediately or do some organization without lagging hard.
 
