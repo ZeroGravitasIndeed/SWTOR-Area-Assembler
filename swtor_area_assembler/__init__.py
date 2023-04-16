@@ -9,7 +9,7 @@ bl_info = {
     "name": "SWTOR Area Assembler",
     "author": "ZeroGravitas & Crunch",
     "version": (0, 5),
-    "blender": (3, 1, 0),
+    "blender": (3, 1, 1),
     "category": "SWTOR",
     "location": "File > Import > SWTOR (Area .json)",
     "description": " Allows for the importing of SWTOR .DAT Files converted to .JSON Format",

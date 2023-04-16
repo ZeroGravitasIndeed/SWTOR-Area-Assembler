@@ -64,7 +64,6 @@ class addonMenuItem(Operator, ImportHelper):
 
 
 
-
     # List of operator properties, the attributes will be assigned
     # to the class instance from the operator settings before calling.
     SAAboolSkipDBOObjects: BoolProperty(
@@ -93,8 +92,13 @@ class addonMenuItem(Operator, ImportHelper):
         default=False,
     )
     SAAboolHideAfterImport: BoolProperty(
-        name="Hide Collections In Viewport After Importing",
-        description="All resulting Collections are hidden ('eye' icon in Outliner')\nto keep Blender responsive when under a massive load of objects.\nRecommended when importing whole worlds",
+        name="Hide Objects After Importing",
+        description="Imported Area objects are hidden ('eye' icon in Outliner, 'h' shortcut) to keep Blender\nmore responsive when having massive amounts of objects per individual Collections.\n\nLag could persist if the Outliner is overloaded, but it should be far more tolerable.\n\nRecommended when importing .json files weighting several MegaBytes each",
+        default=False,
+    )
+    SAAboolExcludeAfterImport: BoolProperty(
+        name="Exclude Collections After Importing",
+        description="Resulting Collections are excluded (checkbox in Outliner, 'e' shortcut')\nto keep Blender fully responsive and be able to manage them without lag.\n\nExcluded Collections won't list their objects in the Outliner: that's normal.\n\nRecommended when importing a massive number of areas, such as whole worlds.\n\n(Excluding Collections resets the hide/show state of the Collections' contents.\nHide Objects After Importing won't have an effect if this option is on)",
         default=False,
     )
     
@@ -120,6 +124,10 @@ class addonMenuItem(Operator, ImportHelper):
 
     def execute(self, context):
         
+        if self.files[0].name == "":
+            self.report({'ERROR'}, "No files selected")
+            return {'CANCELLED'}
+
         # For timing stats
         start_time = time.time()
 
@@ -176,23 +184,37 @@ class addonMenuItem(Operator, ImportHelper):
             if len(json_name) > max_json_name_length:
                 max_json_name_length = len(json_name)
 
-            # Add json_name to all json_location_data elements
+
+            # Loop through the .json file's elements,
+            # filter out some obvious discardables,
+            # and add some necessary data.
+
+            filtered_json_location_data = []
+
             for element in json_location_data:
 
-                element["json_name"] = json_name
-                
-                # For console output formatting stuff
                 if "assetName" in element:
-                    if (".gr2" in element["assetName"] or
-                        ".hms" in element["assetName"] or
-                        ".lit" in element["assetName"] or
-                        ("dbo" in element["assetName"] and self.SAAboolSkipDBOObjects == False) ):
+                    element_filepath = element["assetName"]
+                    if (
+                        (".gr2" in element_filepath or
+                         ".hms" in element_filepath or
+                         ".lit" in element_filepath or
+                         ("dbo" in element_filepath and self.SAAboolSkipDBOObjects == False) )
+                         and not "_fadeportal_" in element_filepath
+                        ):
+                    
+                        # Add json_name to element
+                        element["json_name"] = json_name
+
+                        # Calculate max name length For console output formatting
                         swtor_name_length = len(Path(element["assetName"]).stem)
                         if swtor_name_length > max_swtor_name_length:
                             max_swtor_name_length = swtor_name_length
 
+                        filtered_json_location_data.append(element)
+
             # Append this .json data to the master list
-            swtor_location_data += json_location_data
+            swtor_location_data += filtered_json_location_data
 
 
 
@@ -631,7 +653,8 @@ class addonMenuItem(Operator, ImportHelper):
                 scale =    [item["scale"][0], 
                             item["scale"][1],
                             item["scale"][2]]
-
+            else:
+                scale = [0.001, 0.001, 0.001]
             blender_object.location = position
             blender_object.rotation_mode = 'ZXY'
             blender_object.rotation_euler = rotation
@@ -725,18 +748,26 @@ class addonMenuItem(Operator, ImportHelper):
             view_layer = bpy.context.view_layer
             for collection in view_layer.layer_collection.children:
                 iterate_collections(collection, exclude_collection_lights)
-                # iterate_collections(collection, hide_collection_children)
 
 
-        # If Hide after Import is on, exclude the collections from view
+        # If Hide after Import is on, hide area objects from view
         if self.SAAboolHideAfterImport:
+            print("\n\nHIDING OBJECTS FROM VIEW\n------------------------\n")
+            view_layer = bpy.context.view_layer
+            for collection in bpy.data.collections:
+                if collection.name.split(" ")[0] in json_names:
+                    if collection.objects:
+                        for obj in collection.objects:
+                            obj.hide_set(True)
+
+
+        # If Exclude after Import is on, exclude area Collections from view
+        if self.SAAboolExcludeAfterImport:
+            print("\n\nEXCLUDING COLLECTIONS FROM VIEWLAYER\n------------------------------------\n")
             view_layer = bpy.context.view_layer
             for collection in view_layer.layer_collection.children:
                 if collection.name in json_names:
                     collection.exclude = True
-
-
-
 
 
 
@@ -755,6 +786,8 @@ class addonMenuItem(Operator, ImportHelper):
         print("MERGE MULTI-MESH OBJECTS ", str(self.SAAboolMergeMultiObjects))
         print("APPLY FINAL ROTATION: ", str(self.SAAboolApplyFinalRotation))
         print("APPLY SCENE SCALE: ", str(self.SAAboolApplySceneScale))
+        print("HIDE OBJECTS AFTER IMPORT: ", str(self.SAAboolHideAfterImport))
+        print("EXCLUDE COLLECTIONS AFTER IMPORT: ", str(self.SAAboolExcludeAfterImport))
         print("------------------------------------------")
         if self.SAAboolCreateSceneLights and Lights_count > 100:
             print("Number of lights in the area exceeds 100.")
@@ -1112,3 +1145,4 @@ def scalescene():
                             release_confirm=True)
         
     return
+    
