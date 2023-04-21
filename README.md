@@ -14,6 +14,11 @@ Provisional instructions on how to produce the requisite area data .json files i
 
 ___
 
+**v.1.1.2:**
+Minor per area-Collections changes:
+* **Reordered as AREA: Lights - Terrain - Objects
+* **No Terrain Collection is there isn't any terrain object.
+
 **v.1.1.1:**
 
 In order to deal with two kinds of enormous area imports that leave Blender in a super-laggy state, the addon provides with these two new options:
