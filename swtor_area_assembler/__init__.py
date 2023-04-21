@@ -8,11 +8,11 @@ import bpy
 bl_info = {
     "name": "SWTOR Area Assembler",
     "author": "ZeroGravitas & Crunch",
-    "version": (1, 1,1),
+    "version": (1, 1, 2),
     "blender": (3, 1, 0),
     "category": "SWTOR",
     "location": "File > Import > SWTOR (Area .json)",
-    "description": " Allows for the importing of SWTOR .DAT Files converted to .JSON Format",
+    "description": "Imports Jedipedia.net-exported SWTOR .DAT Files converted to .JSON Format",
     "doc_url": "",
     "tracker_url": "",
 }
