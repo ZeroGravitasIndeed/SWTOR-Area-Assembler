@@ -16,8 +16,8 @@ ___
 
 **v.1.1.2:**
 Minor per area-Collections changes:
-* **Reordered as AREA: Lights - Terrain - Objects
-* **No Terrain Collection is there isn't any terrain object.
+* **Reordered as AREA: Lights - Terrain - Objects.**
+* **No Terrain Collection is there isn't any terrain object.**
 
 **v.1.1.1:**
 
