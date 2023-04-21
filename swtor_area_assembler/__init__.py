@@ -12,7 +12,7 @@ bl_info = {
     "blender": (3, 1, 0),
     "category": "SWTOR",
     "location": "File > Import > SWTOR (Area .json)",
-    "description": " Allows for the importing of SWTOR .DAT Files converted to .JSON Format",
+    "description": "Imports Jedipedia.net-exported SWTOR .DAT Files converted to .JSON Format",
     "doc_url": "",
     "tracker_url": "",
 }

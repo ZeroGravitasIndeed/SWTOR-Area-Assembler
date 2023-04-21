@@ -15,7 +15,6 @@ import sys
 
 
 
-
 # -------------------------------------------------------------------------------
 # START WINDOW IMPORT -----------------------------------------------------------
 # -------------------------------------------------------------------------------
@@ -251,7 +250,6 @@ class addonMenuItem(Operator, ImportHelper):
                 location_collection.children.link(location_objects_collection)
             else:
                 location_objects_collection = bpy.data.collections[json_name + " - Objects"]
-
 
 
 
