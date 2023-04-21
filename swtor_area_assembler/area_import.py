@@ -15,6 +15,7 @@ import sys
 
 
 
+
 # -------------------------------------------------------------------------------
 # START WINDOW IMPORT -----------------------------------------------------------
 # -------------------------------------------------------------------------------
@@ -191,15 +192,14 @@ class addonMenuItem(Operator, ImportHelper):
 
             filtered_json_location_data = []
 
+            has_terrain = False
+
             for element in json_location_data:
 
                 if "assetName" in element:
                     element_filepath = element["assetName"]
                     if (
-                        (".gr2" in element_filepath or
-                         ".hms" in element_filepath or
-                         ".lit" in element_filepath or
-                         ("dbo" in element_filepath and self.SAAboolSkipDBOObjects == False) )
+                        ( ".gr2" in element_filepath or ".hms" in element_filepath or ".lit" in element_filepath or ("dbo" in element_filepath and self.SAAboolSkipDBOObjects == False) )
                          and not "_fadeportal_" in element_filepath
                         ):
                     
@@ -211,13 +211,13 @@ class addonMenuItem(Operator, ImportHelper):
                         if swtor_name_length > max_swtor_name_length:
                             max_swtor_name_length = swtor_name_length
 
+                        if ".hms" in element_filepath:
+                            has_terrain = True
+
                         filtered_json_location_data.append(element)
 
             # Append this .json data to the master list
             swtor_location_data += filtered_json_location_data
-
-
-
 
 
             # Create Collections.
@@ -229,21 +229,6 @@ class addonMenuItem(Operator, ImportHelper):
             else:
                 location_collection = bpy.data.collections[json_name]
 
-            # Location's objects.
-            if not (json_name + " - Objects") in bpy.data.collections:
-                location_objects_collection = bpy.data.collections.new(json_name + " - Objects")
-                location_collection.children.link(location_objects_collection)
-            else:
-                location_objects_collection = bpy.data.collections[json_name + " - Objects"]
-
-            # Location's terrain.
-            if not (json_name + " - Terrain") in bpy.data.collections:
-                location_terrains_collection = bpy.data.collections.new(json_name + " - Terrain")
-                location_collection.children.link(location_terrains_collection)
-            else:
-                location_terrains_collection = bpy.data.collections[json_name + " - Terrain"]
-                
-
             # Location's lights if the user wants them (yes by default)
             if self.SAAboolCreateSceneLights == True:
                 if not (json_name + " - Lights") in bpy.data.collections:
@@ -251,6 +236,21 @@ class addonMenuItem(Operator, ImportHelper):
                     location_collection.children.link(location_lights_collection)
                 else:
                     location_lights_collection  = bpy.data.collections[json_name + " - Lights"]
+
+            # Location's terrain.
+            if has_terrain == True:
+                if not (json_name + " - Terrain") in bpy.data.collections:
+                    location_terrains_collection = bpy.data.collections.new(json_name + " - Terrain")
+                    location_collection.children.link(location_terrains_collection)
+                else:
+                    location_terrains_collection = bpy.data.collections[json_name + " - Terrain"]
+
+            # Location's objects.
+            if not (json_name + " - Objects") in bpy.data.collections:
+                location_objects_collection = bpy.data.collections.new(json_name + " - Objects")
+                location_collection.children.link(location_objects_collection)
+            else:
+                location_objects_collection = bpy.data.collections[json_name + " - Objects"]
 
 
 
@@ -271,6 +271,10 @@ class addonMenuItem(Operator, ImportHelper):
         if len(swtor_location_data) == 0:
             self.report({"WARNING"}, "The selected .json files contain no data.")
             return {"CANCELLED"}
+
+
+
+
 
 
         # -------------------------------------------------------------------------------
