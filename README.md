@@ -13,6 +13,8 @@ Download the latest version of the Addon from **[here](https://github.com/SWTOR-
 Provisional instructions on how to produce the requisite area data .json files in **[this PDF](https://raw.githubusercontent.com/SWTOR-Slicers/SWTOR-Area-Assembler/main/How%20to%20export%20SWTOR%20area%20data.pdf)**.
 
 ___
+**v.1.1.3:**
+Added trapping for lack of terrain folder to avoid scary error messages.
 
 **v.1.1.2:**
 Minor per area-Collections changes:
