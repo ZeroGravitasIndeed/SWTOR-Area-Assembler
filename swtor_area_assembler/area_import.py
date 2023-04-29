@@ -137,6 +137,11 @@ class addonMenuItem(Operator, ImportHelper):
         # Get the extracted SWTOR assets' "resources" folder from the add-on's preferences. 
         resources_folderpath = context.preferences.addons[__package__].preferences.resources_folderpath
 
+        # Check that there is a terrain maps subfolder in the resources folder
+        terrain_folderpath = Path(resources_folderpath) / "world" / "heightmaps"
+        if not terrain_folderpath.exists():
+            terrain_folderpath = None
+
 
         # -------------------------------------------------------------------------------
         # PER-JSON FILE PREPROCESSING ---------------------------------------------------
@@ -191,6 +196,7 @@ class addonMenuItem(Operator, ImportHelper):
 
             filtered_json_location_data = []
 
+            # Flag to decide to create a terrain Collection for this .json area
             has_terrain = False
 
             for element in json_location_data:
@@ -385,10 +391,14 @@ class addonMenuItem(Operator, ImportHelper):
 
                 print(f'{items_processed * 100 / items_to_process:6.2f} %   AREA: {json_name:<{max_json_name_length}}   ID: {swtor_id}   -- TERRAIN OBJECT --   ', end="")
 
+                if terrain_folderpath is None:
+                    print("WARNING: NO RESOURCES\\WORLD\\HEIGHTMAPS FOLDER AVAILABLE")
+                    continue
+
                 # Collection where the light object will be moved to
                 location_terrains_collection  = bpy.data.collections[json_name + " - Terrain"]
 
-                terrain_path=str(Path(resources_folderpath) / "world" / "heightmaps" / (swtor_id + ".obj") )
+                terrain_path = str(terrain_folderpath / Path(swtor_id + ".obj") )
 
 
                 # ACTUAL IMPORTING:
@@ -404,7 +414,7 @@ class addonMenuItem(Operator, ImportHelper):
                             filepath=terrain_path,
                             use_image_search=False)  # .obj importer
                     if result == "CANCELLED":
-                        print(f"\n           WARNING: .gr2 importer addon failed to import {swtor_id} - {str( Path(resources_folderpath) / Path(swtor_filepath) )}\n")
+                        print(f"\n           WARNING: Blender's .obj importer failed to import {swtor_id} - {str( Path(resources_folderpath) / Path(swtor_filepath) )}\n")
                         continue
                     else:
                         print("IMPORTED")
