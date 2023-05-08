@@ -25,6 +25,7 @@ Added trapping for lack of terrain folder to avoid scary error messages.
 Minor per area-Collections changes:
 * Sub-Collections order is now Lights - Terrain - Objects.
 * No Terrain Collection if there isn't any terrain object.
+* Lights generation's defaults change to not creating them.
 
 **v.1.1.1:**
 
