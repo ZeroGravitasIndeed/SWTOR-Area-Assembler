@@ -18,9 +18,7 @@ ___
 * Show Full Report In Terminal: from now on, the console output will limit itself to a single line of progress per stage of the importing process unless errors are reported. The old barrage of progress reports becomes an option.
 * Separate Object Types in SubCollections: creating and sorting objects into Objects, Terrains, and Lights SubCollections is now optional.
 
-
 **v.1.1.3:**
->>>>>>> ed649ab32a1caa3f2bee12a950af30a8d5b9c796
 Added trapping for lack of terrain folder to avoid scary error messages.
 
 **v.1.1.2:**
