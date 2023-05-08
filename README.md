@@ -8,9 +8,9 @@ in order to be able to import SWTOR objects into Blender. If you are still using
 
 It is recommended to toggle Blender's System Console to watch the addon's progress when in use, as there are no other progress indicators yet.
 
-Download the latest version of the Addon from **[here](https://github.com/SWTOR-Slicers/SWTOR-Area-Assembler/releases)**.
+### Download the latest version of the Addon from **[here](https://github.com/SWTOR-Slicers/SWTOR-Area-Assembler/releases)**.
 
-Provisional instructions on how to produce the requisite area data .json files in **[this PDF](https://raw.githubusercontent.com/SWTOR-Slicers/SWTOR-Area-Assembler/main/How%20to%20export%20SWTOR%20area%20data.pdf)**.
+### Full usage guide **[here](https://github.com/SWTOR-Slicers/WikiPedia/wiki/Assembling-SWTOR-Game-Areas-via-the-SWTOR-Area-Assembler-Addon-for-Blender)**.
 
 ___
 **v.1.1.3:**
@@ -18,8 +18,8 @@ Added trapping for lack of terrain folder to avoid scary error messages.
 
 **v.1.1.2:**
 Minor per area-Collections changes:
-* **Reordered as AREA: Lights - Terrain - Objects
-* **No Terrain Collection is there isn't any terrain object.
+* Sub-Collections order is now Lights - Terrain - Objects.
+* No Terrain Collection if there isn't any terrain object.
 
 **v.1.1.1:**
 
