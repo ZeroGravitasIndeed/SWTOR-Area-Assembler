@@ -15,8 +15,8 @@ It is recommended to toggle Blender's System Console to watch the addon's progre
 ___
 **V.1.2.0: New importing options:**
 
-* Show Full Report In Terminal: from now on, the console output will limit itself to a single line of progress per stage of the importing process unless errors are reported. The old barrage of progress reports becomes an option.
-* Separate Object Types in SubCollections: creating and sorting objects into Objects, Terrains, and Lights SubCollections is now optional.
+* **Show Full Report In Terminal**: from now on, the console output will limit itself to a single line of progress per stage of the importing process unless errors are reported. The old barrage of progress reports becomes an option.
+* **Separate Object Types in SubCollections**: creating and sorting objects into Objects, Terrains, and Lights SubCollections is now optional.
 * Lights generation's defaults change to not creating them.
 
 **v.1.1.3:**
