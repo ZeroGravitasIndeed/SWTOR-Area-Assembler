@@ -8,7 +8,7 @@ import bpy
 bl_info = {
     "name": "SWTOR Area Assembler",
     "author": "ZeroGravitas & Crunch",
-    "version": (1, 1, 3),
+    "version": (1, 3, 0),
     "blender": (3, 1, 0),
     "category": "SWTOR",
     "location": "File > Import > SWTOR (Area .json)",
@@ -25,10 +25,6 @@ modulesNames = [
     'preferences',
     'area_import',
     ]
-# Add an uber mats processor if the zg_swtor_tools addon
-# isn't installed and activated.
-# if not "process_uber_mats" in dir(bpy.ops.zgswtor):
-#     modulesNames.append("process_uber_mats_plus")
 
 
 

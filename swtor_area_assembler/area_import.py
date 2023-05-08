@@ -13,8 +13,6 @@ import io
 import sys
 
 
-
-
 # -------------------------------------------------------------------------------
 # START WINDOW IMPORT -----------------------------------------------------------
 # -------------------------------------------------------------------------------
@@ -42,8 +40,8 @@ class addonMenuItem(Operator, ImportHelper):
     # Greys-out the Import sub-menu otherwise.
     @classmethod
     def poll(cls,context):
-        resources_folderpath = context.preferences.addons[__package__].preferences.resources_folderpath
-        if Path(resources_folderpath).exists() and ("gr2" in dir(bpy.ops.import_mesh)):
+        swtor_resources_folderpath = context.preferences.addons[__package__].preferences.swtor_resources_folderpath
+        if Path(swtor_resources_folderpath).exists() and ("gr2" in dir(bpy.ops.import_mesh)):
             return True
         else:
             return False
@@ -66,16 +64,6 @@ class addonMenuItem(Operator, ImportHelper):
 
     # List of operator properties, the attributes will be assigned
     # to the class instance from the operator settings before calling.
-    SAAboolSkipDBOObjects: BoolProperty(
-        name="Skip dbo Objects",
-        description="Don't import design blockout (DBO) objects such as blockers, portals, etc",
-        default=True,
-    )
-    SAAboolCreateSceneLights: BoolProperty(
-        name="Create Scene Lights",
-        description="Automatically create basic scene lighting based on in game lighting nodes.\nThey will be created as excluded from view for performance reasons",
-        default=True,
-    )
     SAAboolApplyFinalRotation: BoolProperty(
         name="Apply Final Rotation",
         description="Disable to skip final rotation. All objects will need to be rotated X Axis 90 Degrees",
@@ -86,9 +74,24 @@ class addonMenuItem(Operator, ImportHelper):
         description="Automatically scale the entire scene after import by 10x to better match Blender Units",
         default=False,
     )
+    SAAboolSkipDBOObjects: BoolProperty(
+        name="Skip dbo Objects",
+        description="Don't import design blockout (DBO) objects such as blockers, portals, etc",
+        default=True,
+    )
+    SAAboolCreateSceneLights: BoolProperty(
+        name="Create Scene Lights",
+        description="Automatically create basic scene lighting based on in game lighting nodes.\nIf they exceed the amount of 100, they will be created\nas Excluded From The View Layer for performance reasons",
+        default=False,
+    )
+    SAAboolCollectionObjects: BoolProperty(
+        name="Separate Object Types in Sub-Collections",
+        description="Separates objects, terrains and lights in per-Area Children Collections",
+        default=False,
+    )
     SAAboolMergeMultiObjects: BoolProperty(
         name="Merge Multi-Objects",
-        description="Joins single .gr2 file-originated multi-objects\ninto single objects, speeding up scene import",
+        description="Joins single .gr2 file-originated multi-objects\ninto single objects",
         default=False,
     )
     SAAboolHideAfterImport: BoolProperty(
@@ -101,12 +104,19 @@ class addonMenuItem(Operator, ImportHelper):
         description="Resulting Collections are excluded (checkbox in Outliner, 'e' shortcut')\nto keep Blender fully responsive and be able to manage them without lag.\n\nExcluded Collections won't list their objects in the Outliner: that's normal.\n\nRecommended when importing a massive number of areas, such as whole worlds.\n\n(Excluding Collections resets the hide/show state of the Collections' contents.\nHide Objects After Importing won't have an effect if this option is on)",
         default=False,
     )
+    SAAboolShowFullReport: BoolProperty(
+        name="Show Full Report In Terminal",
+        description="If checked, a full length report will be produced, including not just errors but importing successes, too.\n\nFull length reports may exceed the Console's default capacity and become truncated.\nTo avoid that, increase that setting accordingly, around 500 lines per expected .json file,\nin your Operating System's Terminal app or in your IDE (Integrated Development Environment)",
+        default=False,
+    )
+
     
     # Register some properties in the object class for helping
     # dealing with them in certain phases of the process
     bpy.types.Object.swtor_id = bpy.props.StringProperty()
     bpy.types.Object.swtor_parent_id = bpy.props.StringProperty()
     bpy.types.Object.swtor_json = bpy.props.StringProperty()
+    
     # Props that no longer seem necessary once transforms were nailed down
     # # Making these props strings because zero values seem to be omitted
     # bpy.types.Object.swtor_positionX = bpy.props.StringProperty()
@@ -115,9 +125,11 @@ class addonMenuItem(Operator, ImportHelper):
     # bpy.types.Object.swtor_rotationX = bpy.props.StringProperty()
     # bpy.types.Object.swtor_rotationY = bpy.props.StringProperty()
     # bpy.types.Object.swtor_rotationZ = bpy.props.StringProperty()
-    bpy.types.Object.swtor_finalPositionX = bpy.props.StringProperty()
-    bpy.types.Object.swtor_finalPositionY = bpy.props.StringProperty()
-    bpy.types.Object.swtor_finalPositionZ = bpy.props.StringProperty()
+    # bpy.types.Object.swtor_finalPositionX = bpy.props.StringProperty()
+    # bpy.types.Object.swtor_finalPositionY = bpy.props.StringProperty()
+    # bpy.types.Object.swtor_finalPositionZ = bpy.props.StringProperty()
+
+
 
 
 
@@ -128,6 +140,24 @@ class addonMenuItem(Operator, ImportHelper):
             self.report({'ERROR'}, "No files selected")
             return {'CANCELLED'}
 
+
+        # Terminal's special ANSI characters.
+        # See: http://www.climagic.org/mirrors/VT100_Escape_Codes.html
+        # (replace "^[" in terminal codes with \033)
+        CLEAR_TERMINAL = '\033[2J'
+        CURSOR_HOME = '\033[H'
+        LINE_FLUSH = '\r\033[K'
+        UP_FRONT_LINE = '\033[F'
+
+        # If Full Reports in Terminal are selected,
+        # don't use the terminal code for backtracking a line
+        if self.SAAboolShowFullReport is True:
+            LINEBACK = ""
+        else:
+            LINEBACK = UP_FRONT_LINE + LINE_FLUSH
+
+
+
         # For timing stats
         start_time = time.time()
 
@@ -135,10 +165,10 @@ class addonMenuItem(Operator, ImportHelper):
         folder = (os.path.dirname(self.filepath))
 
         # Get the extracted SWTOR assets' "resources" folder from the add-on's preferences. 
-        resources_folderpath = context.preferences.addons[__package__].preferences.resources_folderpath
+        swtor_resources_folderpath = context.preferences.addons[__package__].preferences.swtor_resources_folderpath
 
         # Check that there is a terrain maps subfolder in the resources folder
-        terrain_folderpath = Path(resources_folderpath) / "world" / "heightmaps"
+        terrain_folderpath = Path(swtor_resources_folderpath) / "world" / "heightmaps"
         if not terrain_folderpath.exists():
             terrain_folderpath = None
 
@@ -158,14 +188,19 @@ class addonMenuItem(Operator, ImportHelper):
         max_json_name_length = 0
         max_swtor_name_length = 0
 
-        clear_terminal
-        print("\n\nMERGING DATA FROM .JSON FILES:\n-----------------------------\n")
+        print(CLEAR_TERMINAL + CURSOR_HOME)
+        print("####################")
+        print("SWTOR AREA ASSEMBLER")
+        print("####################")
+        print()        
+
+        print("\n\nMERGING DATA FROM .JSON FILES:\n------------------------------\n")
 
         for filepath in self.files:
 
             # generate full path to file
             json_filepath = (os.path.join(folder, filepath.name))
-            print(filepath.name, end="")
+            print(LINEBACK + filepath.name, end="")
 
             # Load .json file as a list of dictionary elements.
             try:
@@ -224,6 +259,7 @@ class addonMenuItem(Operator, ImportHelper):
             # Append this .json data to the master list
             swtor_location_data += filtered_json_location_data
 
+            print(LINEBACK + "DONE!")
 
             # Create Collections.
 
@@ -234,28 +270,29 @@ class addonMenuItem(Operator, ImportHelper):
             else:
                 location_collection = bpy.data.collections[json_name]
 
-            # Location's lights if the user wants them (yes by default)
-            if self.SAAboolCreateSceneLights == True:
-                if not (json_name + " - Lights") in bpy.data.collections:
-                    location_lights_collection  = bpy.data.collections.new(json_name + " - Lights")
-                    location_collection.children.link(location_lights_collection)
-                else:
-                    location_lights_collection  = bpy.data.collections[json_name + " - Lights"]
+            if self.SAAboolCollectionObjects == True:
+                # Location's lights if the user wants them (yes by default)
+                if self.SAAboolCreateSceneLights == True:
+                    if not (json_name + " - Lights") in bpy.data.collections:
+                        location_lights_collection  = bpy.data.collections.new(json_name + " - Lights")
+                        location_collection.children.link(location_lights_collection)
+                    else:
+                        location_lights_collection  = bpy.data.collections[json_name + " - Lights"]
 
-            # Location's terrain.
-            if has_terrain == True:
-                if not (json_name + " - Terrain") in bpy.data.collections:
-                    location_terrains_collection = bpy.data.collections.new(json_name + " - Terrain")
-                    location_collection.children.link(location_terrains_collection)
-                else:
-                    location_terrains_collection = bpy.data.collections[json_name + " - Terrain"]
+                # Location's terrain.
+                if has_terrain == True:
+                    if not (json_name + " - Terrain") in bpy.data.collections:
+                        location_terrains_collection = bpy.data.collections.new(json_name + " - Terrain")
+                        location_collection.children.link(location_terrains_collection)
+                    else:
+                        location_terrains_collection = bpy.data.collections[json_name + " - Terrain"]
 
-            # Location's objects.
-            if not (json_name + " - Objects") in bpy.data.collections:
-                location_objects_collection = bpy.data.collections.new(json_name + " - Objects")
-                location_collection.children.link(location_objects_collection)
-            else:
-                location_objects_collection = bpy.data.collections[json_name + " - Objects"]
+                # Location's objects.
+                if not (json_name + " - Objects") in bpy.data.collections:
+                    location_objects_collection = bpy.data.collections.new(json_name + " - Objects")
+                    location_collection.children.link(location_objects_collection)
+                else:
+                    location_objects_collection = bpy.data.collections[json_name + " - Objects"]
 
 
 
@@ -308,6 +345,11 @@ class addonMenuItem(Operator, ImportHelper):
             "white_utility_hidden",
         ]
 
+        # More filters to apply, by <derived> type:
+        shaders_to_exclude_objects_by = [
+            "OpacityFade",
+        ]
+
         # Deduplication dict to keep track of already imported objects
         # and avoid reimporting thorugh timewasting .gr2 importer.
         # Key: value is:
@@ -329,7 +371,7 @@ class addonMenuItem(Operator, ImportHelper):
         # LOOP THROUGH ELEMENTS STARTS HERE ----------------------------------------
 
 
-        print("\n\nPROCESSING AREA OBJECTS' DATA:\n-----------------------------\n")
+        print("\n\nPROCESSING AREA OBJECTS' DATA:\n------------------------------\n")
 
         for item in swtor_location_data:
             items_processed += 1
@@ -373,7 +415,10 @@ class addonMenuItem(Operator, ImportHelper):
 
                 if self.SAAboolCreateSceneLights == True:
                     # Collection where the light object will be moved to
-                    location_lights_collection  = bpy.data.collections[json_name + " - Lights"]
+                    if self.SAAboolCollectionObjects == True:
+                        location_lights_collection  = bpy.data.collections[json_name + " - Lights"]
+                    else:
+                        location_lights_collection  = bpy.data.collections[json_name]
 
                     light_data = bpy.data.lights[json_name]
                     blender_object = bpy.data.objects.new(name=swtor_id, object_data = light_data)
@@ -389,14 +434,17 @@ class addonMenuItem(Operator, ImportHelper):
 
                 # TERRAIN OBJECT. ---------------------------------
 
-                print(f'{items_processed * 100 / items_to_process:6.2f} %   AREA: {json_name:<{max_json_name_length}}   ID: {swtor_id}   -- TERRAIN OBJECT --   ', end="")
+                print(f'{LINEBACK}{items_processed * 100 / items_to_process:6.2f} %   AREA: {json_name:<{max_json_name_length}}   ID: {swtor_id}   -- TERRAIN OBJECT --   ', end="")
 
                 if terrain_folderpath is None:
                     print("WARNING: NO RESOURCES\\WORLD\\HEIGHTMAPS FOLDER AVAILABLE")
                     continue
 
                 # Collection where the light object will be moved to
-                location_terrains_collection  = bpy.data.collections[json_name + " - Terrain"]
+                if self.SAAboolCollectionObjects == True:
+                    location_terrains_collection  = bpy.data.collections[json_name + " - Terrain"]
+                else:
+                    location_terrains_collection  = bpy.data.collections[json_name]
 
                 terrain_path = str(terrain_folderpath / Path(swtor_id + ".obj") )
 
@@ -414,7 +462,7 @@ class addonMenuItem(Operator, ImportHelper):
                             filepath=terrain_path,
                             use_image_search=False)  # .obj importer
                     if result == "CANCELLED":
-                        print(f"\n           WARNING: Blender's .obj importer failed to import {swtor_id} - {str( Path(resources_folderpath) / Path(swtor_filepath) )}\n")
+                        print(f"\n           WARNING: Blender's .obj importer failed to import {swtor_id} - {str( Path(swtor_resources_folderpath) / Path(swtor_filepath) )}\n")
                         continue
                     else:
                         print("IMPORTED")
@@ -435,10 +483,13 @@ class addonMenuItem(Operator, ImportHelper):
 
                 # MESH OBJECT. ----------------------------------
 
-                print(f'{items_processed * 100 / items_to_process:6.2f} %   AREA: {json_name:<{max_json_name_length}}   ID: {swtor_id}   NAME: {swtor_name:{max_swtor_name_length}}', end="")
+                print(f'{LINEBACK}{items_processed * 100 / items_to_process:6.2f} %   AREA: {json_name:<{max_json_name_length}}   ID: {swtor_id}   NAME: {swtor_name:{max_swtor_name_length}}', end="")
 
                 # Collection where the objects will be moved to
-                location_objects_collection = bpy.data.collections[json_name + " - Objects"]
+                if self.SAAboolCollectionObjects == True:
+                    location_objects_collection = bpy.data.collections[json_name + " - Objects"]
+                else:
+                    location_objects_collection = bpy.data.collections[json_name]
 
                 if swtor_filepath not in already_existing_objects:
 
@@ -451,14 +502,14 @@ class addonMenuItem(Operator, ImportHelper):
                     objects_before_importing = list(bpy.data.objects)
                     try:
                         with suppress_stdout():  # To silence Darth Atroxa's print() outputs
-                            result = bpy.ops.import_mesh.gr2(filepath = str( Path(resources_folderpath) / Path(swtor_filepath) ))
+                            result = bpy.ops.import_mesh.gr2(filepath = str( Path(swtor_resources_folderpath) / Path(swtor_filepath) ))
                         if result == "CANCELLED":
-                            print(f"\n\nWARNING: .gr2 importer addon failed to import {swtor_id} - {str( Path(resources_folderpath) / Path(swtor_filepath) )}\n")
+                            print(f"\n\nWARNING: .gr2 importer addon failed to import {swtor_id} - {str( Path(swtor_resources_folderpath) / Path(swtor_filepath) )}\n")
                             continue
                         else:
                             print("IMPORTED    ", end="")
                     except:
-                        print(f"\n\nWARNING: the .gr2 Importer addon CRASHED while importing:\n{swtor_id} - {str( Path(resources_folderpath) / Path(swtor_filepath) )}\n")
+                        print(f"\n\nWARNING: the .gr2 Importer addon CRASHED while importing:\n{swtor_id} - {str( Path(swtor_resources_folderpath) / Path(swtor_filepath) )}\n")
                         print("Despite that, the Area Importer addon will keep on importing the rest of the objects")
                         continue
                     objects_after_importing = list(bpy.data.objects)
@@ -688,10 +739,12 @@ class addonMenuItem(Operator, ImportHelper):
             # blender_object["swtor_rotationX"] = str(item["rotation"][0])
             # blender_object["swtor_rotationY"] = str(item["rotation"][1])
             # blender_object["swtor_rotationZ"] = str(item["rotation"][2])
-            blender_object["swtor_finalPositionX"] = str(item["finalPosition"]["0"])
-            blender_object["swtor_finalPositionY"] = str(item["finalPosition"]["1"])
-            blender_object["swtor_finalPositionZ"] = str(item["finalPosition"]["2"])
+            # blender_object["swtor_finalPositionX"] = str(item["finalPosition"]["0"])
+            # blender_object["swtor_finalPositionY"] = str(item["finalPosition"]["1"])
+            # blender_object["swtor_finalPositionZ"] = str(item["finalPosition"]["2"])
 
+
+        print(LINEBACK + "DONE!")
 
         # -------------------------------------------------------------------------------
         # FINAL PROCESSING PASSES -------------------------------------------------------
@@ -700,7 +753,7 @@ class addonMenuItem(Operator, ImportHelper):
 
         # Parenting pass
 
-        print("\n\nPARENTING OBJECTS LOOP:\n----------------------\n")
+        print("\n\nPARENTING OBJECTS:\n------------------\n")
 
         items_processed = 0
         for item in swtor_location_data:
@@ -710,18 +763,22 @@ class addonMenuItem(Operator, ImportHelper):
                 swtor_parent_id = item["parent"]
                 if swtor_parent_id != "0":
                     if swtor_parent_id in bpy.data.objects:
-                        print(f"{items_processed * 100 / items_to_process:6.2f} %  Parenting  {swtor_id}  to  {swtor_parent_id}")
+                        print(f"{LINEBACK}{items_processed * 100 / items_to_process:6.2f} %  Parenting  {swtor_id}  to  {swtor_parent_id}")
                         parent_with_transformations(bpy.data.objects[swtor_id], bpy.data.objects[swtor_parent_id], inherit_transformations = True)
                     else:
-                        print(f"{items_processed * 100 / items_to_process:6.2f} %  Parenting  {swtor_id}  to  {swtor_parent_id} FAILED!!! Parent doesn't exist")
-
+                        print(f"{LINEBACK}{items_processed * 100 / items_to_process:6.2f} %  Parenting  {swtor_id}  to  {swtor_parent_id}  FAILED!!! Parent doesn't exist")
+                        print(f"          AREA: {item['json_name']:<{max_json_name_length}}   ORPHANED OBJECT: {str(Path(item['assetName']).stem):{max_swtor_name_length}}")
+                        print()
         bpy.ops.object.select_all(action="DESELECT")
         bpy.context.view_layer.objects.active = None
+        
+        print(LINEBACK + "DONE!")
+
 
 
         # Renaming pass
 
-        print("\n\nRENAMING OBJECTS LOOP:\n---------------------\n")
+        print("\n\nRENAMING OBJECTS:\n-----------------\n")
 
         items_processed = 0
         for item in swtor_location_data:
@@ -731,8 +788,9 @@ class addonMenuItem(Operator, ImportHelper):
                 swtor_name = Path(item["assetName"]).stem
                 if swtor_name != "heightmap":
                     bpy.data.objects[swtor_id].name = swtor_name
-                    print(f"{items_processed * 100 / items_to_process:6.2f} %  Renaming  {swtor_id}  {swtor_name}")
+                    print(f"{LINEBACK}{items_processed * 100 / items_to_process:6.2f} %  Renaming  {swtor_id}  {swtor_name}")
 
+        print(LINEBACK + "DONE!")
 
 
     # -------------------------------------------------------------------------------
@@ -742,12 +800,19 @@ class addonMenuItem(Operator, ImportHelper):
         selectparents()
 
         if self.SAAboolApplyFinalRotation is True:
+            print("\n\nFINAL SCENE ROTATION:\n---------------------\n")
             finalrotation()
             # finalrotationbymethod()
+            print(LINEBACK + "DONE!")
+
         if self.SAAboolApplySceneScale is True:
+            print("\n\nFINAL SCENE SCALING:\n--------------------\n")
             scalescene()
+            print(LINEBACK + "DONE!")
         
         deselectall()
+
+
         
 
 
@@ -774,14 +839,17 @@ class addonMenuItem(Operator, ImportHelper):
 
 
         # If Exclude after Import is on, exclude area Collections from view
+        # (but not its Objects and Terrains' sub-Collections)
         if self.SAAboolExcludeAfterImport:
             print("\n\nEXCLUDING COLLECTIONS FROM VIEWLAYER\n------------------------------------\n")
             view_layer = bpy.context.view_layer
             for collection in view_layer.layer_collection.children:
-                if collection.name in json_names:
+                if (collection.name in json_names
+                    and " - Objects" not in collection.name
+                    and " - Terrain" not in collection.name
+                    and " - Lights" not in collection.name):
+                    
                     collection.exclude = True
-
-
 
 
 
@@ -790,8 +858,7 @@ class addonMenuItem(Operator, ImportHelper):
     # THE END. FINIS.  --------------------------------------------------------------
     # -------------------------------------------------------------------------------
         
-        # clear_terminal()
-        
+        print("\n\n")
         print("SETTINGS USED:\n")
         print("SKIP DBO OBJECTS: ", str(self.SAAboolSkipDBOObjects))
         print("ADD PLACEHOLDER LIGHTS: ", str(self.SAAboolCreateSceneLights))
@@ -814,15 +881,17 @@ class addonMenuItem(Operator, ImportHelper):
         print("------------------------------------------")
         print("\nALL DONE!\n\nHAVE A NICE DAY.\n\nBYE <3!")
     
+    
+    
         return {'FINISHED'}
     
-
-
 
 
 # Only needed if you want to add into a dynamic menu.
 def menu_func_import(self, context):
     self.layout.operator(addonMenuItem.bl_idname, text="SWTOR (area .json)")
+
+
 
 
 # Register and add to the "file selector" menu (required to use F3 search "Text Import Operator" for quick access).
@@ -853,6 +922,41 @@ if __name__ == "__main__":
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # -------------------------------------------------------------------------------
 # START UTLITY FUNCTIONS --------------------------------------------------------
 # -------------------------------------------------------------------------------
@@ -862,10 +966,6 @@ if __name__ == "__main__":
 
 
 # MINOR UTILITY CONSOLE FUNCTIONS -----------------------------------------------
-
-from os import system
-clear_terminal = lambda: system('cls')
-
 
 @contextlib.contextmanager
 def suppress_stdout(suppress=True):
@@ -888,7 +988,67 @@ def suppress_stdout(suppress=True):
         yield
 
 
+
+# UNUSED: THE OPS ISN'T WORKING
+def hide_outliner_one_level():
+
+    # Select overriding method depending on Blender's version.
+    # Starting in 3.2 context overrides are deprecated in favor of temp_override
+    # https://docs.blender.org/api/3.2/bpy.types.Context.html#bpy.types.Context.temp_override
+    #
+    # They are scheduled to be removed in 3.3
+
+    version = bpy.app.version
+    major = version[0]
+    minor = version[1]
+    if major < 3 or (major == 3 and minor < 2):
+        use_temp_override = False
+    else:
+        use_temp_override = True
+
+    # window = current Blender app's window in focus
+    window = bpy.context.window
+    # screen = current Workspace
+    screen = window.screen
+    # areas = editors and others. There can be several areas of a same type
+    areas  = [area for area in screen.areas if area.type == 'OUTLINER']
+
+    for area in areas:
+        
+        outliner_area = area.spaces.active
+        
+        display_mode = outliner_area.display_mode
+        
+        if display_mode == "VIEW_LAYER":
+
+            # Regions refer to "physical" regions inside an area: HEADER, WINDOW… (messy terminology)
+            region = [region for region in area.regions if region.type == 'WINDOW'][0]
+            
+            override = {
+                'window': window,
+                'screen': screen,
+                'area': area,
+                'region': region,
+            }
+
+            if use_temp_override:
+                with bpy.context.temp_override(window=window,
+                                            screen=screen,
+                                            area=area,
+                                            region=region
+                                            ):
+                    bpy.ops.outliner.show_one_level(override, open=False)
+                    outliner_area.tag_redraw()
+            else:
+                bpy.ops.outliner.show_one_level(override, open=False)
+                outliner_area.tag_redraw()
+
+    return
+
+
+
 # Functions for managing Collections in the Outliner
+
 def iterate_collections(collection, function):
     # Define a function to recursively iterate over
     # all collections in a hierarchy and apply
@@ -1080,9 +1240,7 @@ def deselectall():
     return
 
 
-def finalrotation():
-    print("\n\nFINAL ROTATION PASS:\n-------------------\n")
-        
+def finalrotation():        
     # Final Rotation correction pass to the whole construction
     bpy.ops.transform.rotate(value=radians(90),
                             orient_axis='X',
@@ -1129,7 +1287,6 @@ def finalrotationbymethod(): # MOST PROBABLY IT WILL BE DELETED
 
     
 def scalescene():
-    # clear_terminal()    
     print("----------------------------------------------------")
     print("\n\nAPPLY SCENE SCALE\n\n") 
     print("----------------------------------------------------")

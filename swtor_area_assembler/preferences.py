@@ -8,7 +8,7 @@ class addonPreferences(bpy.types.AddonPreferences):
     # Preferences properties --------------------
 
     # resources folderpath
-    resources_folderpath: bpy.props.StringProperty(
+    swtor_resources_folderpath: bpy.props.StringProperty(
         name = "SWTOR Resources",
         description = 'Path to the "resources" folder produced by a SWTOR assets extraction',
         subtype = "DIR_PATH",
@@ -27,7 +27,7 @@ class addonPreferences(bpy.types.AddonPreferences):
         col.scale_y = 0.7
         col.label(text="Path to the 'resources' folder in a SWTOR assets extraction")
         col.label(text="produced by the Slicers GUI app, EasyMYP, or any similar tool.")
-        pref_box.prop(self, 'resources_folderpath', expand=True)
+        pref_box.prop(self, 'swtor_resources_folderpath', expand=True)
 
 
 # Registrations
