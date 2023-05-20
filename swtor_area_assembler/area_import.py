@@ -3,6 +3,8 @@ import json
 from math import degrees, radians
 from mathutils import Matrix
 from pathlib import Path
+from zipfile import ZipFile
+import copy
 import os
 import time
 import datetime
@@ -113,22 +115,11 @@ class addonMenuItem(Operator, ImportHelper):
     
     # Register some properties in the object class for helping
     # dealing with them in certain phases of the process
+    bpy.types.Object.swtor_type = bpy.props.StringProperty()
     bpy.types.Object.swtor_id = bpy.props.StringProperty()
     bpy.types.Object.swtor_parent_id = bpy.props.StringProperty()
     bpy.types.Object.swtor_json = bpy.props.StringProperty()
     
-    # Props that no longer seem necessary once transforms were nailed down
-    # # Making these props strings because zero values seem to be omitted
-    # bpy.types.Object.swtor_positionX = bpy.props.StringProperty()
-    # bpy.types.Object.swtor_positionY = bpy.props.StringProperty()
-    # bpy.types.Object.swtor_positionZ = bpy.props.StringProperty()
-    # bpy.types.Object.swtor_rotationX = bpy.props.StringProperty()
-    # bpy.types.Object.swtor_rotationY = bpy.props.StringProperty()
-    # bpy.types.Object.swtor_rotationZ = bpy.props.StringProperty()
-    # bpy.types.Object.swtor_finalPositionX = bpy.props.StringProperty()
-    # bpy.types.Object.swtor_finalPositionY = bpy.props.StringProperty()
-    # bpy.types.Object.swtor_finalPositionZ = bpy.props.StringProperty()
-
 
 
 
@@ -141,25 +132,37 @@ class addonMenuItem(Operator, ImportHelper):
             return {'CANCELLED'}
 
 
-        # Terminal's special ANSI characters.
+        # Terminal's VT100 escape codes (most terminals understand them).
         # See: http://www.climagic.org/mirrors/VT100_Escape_Codes.html
-        # (replace "^[" in terminal codes with \033)
-        CLEAR_TERMINAL = '\033[2J'
-        CURSOR_HOME = '\033[H'
-        LINE_FLUSH = '\r\033[K'
-        UP_FRONT_LINE = '\033[F'
+        # (replacing ^[ in terminal codes with \033)
+        CLEAR_TERMINAL = '\033[2J'      # Clear entire screen.
+        CURSOR_HOME = '\033[H'          # Move cursor to upper left corner.
+        CLEAR_EOL = '\r\033[K'          # Erase to end of current line.
+        LINE_BACK_1ST_COL = '\033[F'    # Move cursor one line up, 1st column.
 
         # If Full Reports in Terminal are selected,
         # don't use the terminal code for backtracking a line
         if self.SAAboolShowFullReport is True:
             LINEBACK = ""
         else:
-            LINEBACK = UP_FRONT_LINE + LINE_FLUSH
-
-
+            LINEBACK = LINE_BACK_1ST_COL + CLEAR_EOL
 
         # For timing stats
         start_time = time.time()
+
+
+
+        print(CLEAR_TERMINAL + CURSOR_HOME)
+        print("####################")
+        print("SWTOR AREA ASSEMBLER")
+        print("####################")
+        print()        
+        
+
+        # Open all the folders and files necessary for the addon's workings
+        spn_table_available = False
+        dyn_nodes__available = False
+
 
         # get the folder
         folder = (os.path.dirname(self.filepath))
@@ -173,6 +176,41 @@ class addonMenuItem(Operator, ImportHelper):
             terrain_folderpath = None
 
 
+        # Open the auxiliary files (zipped nodes and relationship tables)
+
+        addon_pathfolder = os.path.dirname(__file__)
+        
+        # Open zipped dyn nodes folder
+        try:
+            dyn_zip = ZipFile(str(Path(addon_pathfolder) / "dyn.zip"), "r")
+            dyn_nodes__available = True
+        except FileNotFoundError:
+            print(" -- No dyn.zip file found inside the addon. Some objects will be omitted")  # Console.
+
+
+        # Open spn to pcl or dyn correspondence table
+        try:
+            with open(str(Path(addon_pathfolder) / "spn_table.txt"), "r") as spn_to_gr2_or_dyn:
+                print()
+                print("BUILDING TABLE OF INDIRECT OBJECT REFERENCES:")
+                print("---------------------------------------------")
+                print()
+                                    
+                spn_table_available = True
+                spn_table = {}
+                for dyn_obj in spn_to_gr2_or_dyn:
+                    key, value = dyn_obj.split(",")
+                    spn_table[key] = value.replace("\n", "")
+
+                print(LINEBACK + "DONE!")
+        except FileNotFoundError:
+            print(" -- No spn_table file found inside the addon. Some objects will be omitted")  # Console.
+
+        
+        plc_nodes_folder = str(Path(addon_pathfolder) / Path("plc.zip"))
+        dyn_nodes_folder = str(Path(addon_pathfolder) / Path("dyn.zip"))
+
+
         # -------------------------------------------------------------------------------
         # PER-JSON FILE PREPROCESSING ---------------------------------------------------
         # -------------------------------------------------------------------------------
@@ -183,16 +221,12 @@ class addonMenuItem(Operator, ImportHelper):
 
         swtor_location_data = []
         json_names = []
+        dyn_file_data = []
 
         # For console output formatting stuff
         max_json_name_length = 0
         max_swtor_name_length = 0
 
-        print(CLEAR_TERMINAL + CURSOR_HOME)
-        print("####################")
-        print("SWTOR AREA ASSEMBLER")
-        print("####################")
-        print()        
 
         print("\n\nMERGING DATA FROM .JSON FILES:\n------------------------------\n")
 
@@ -225,41 +259,130 @@ class addonMenuItem(Operator, ImportHelper):
                 max_json_name_length = len(json_name)
 
 
-            # Loop through the .json file's elements,
-            # filter out some obvious discardables,
-            # and add some necessary data.
-
-            filtered_json_location_data = []
-
             # Flag to decide to create a terrain Collection for this .json area
+            # if the user has selected to have sub-Collections.
             has_terrain = False
 
-            for element in json_location_data:
 
+            # -------------------------------------------------------------------------------
+            # PER-ELEMENT FILE PREPROCESSING ------------------------------------------------
+            # -------------------------------------------------------------------------------
+            # Loop through the .json file's elements,
+            # filter out some obvious discardables,
+            # and pre-process indirect object references
+            
+            indirect_object_elements = []
+            
+            for element in json_location_data:
                 if "assetName" in element:
-                    element_filepath = element["assetName"]
+                    element["make_dyn_empty"] = False
+                    swtor_filepath = element["assetName"]
+                    # delete preceding directory separator if it exists. It shouldn't vary so much
+                    # but SWTOR is a mess, separator types-wise.
+                    if swtor_filepath.startswith("/") or swtor_filepath.startswith("\\"):
+                        swtor_filepath = swtor_filepath[1:]
+                    element["assetName"] = swtor_filepath
+
                     if (
-                        ( ".gr2" in element_filepath or ".hms" in element_filepath or ".lit" in element_filepath or ("dbo" in element_filepath and self.SAAboolSkipDBOObjects == False) )
-                         and not "_fadeportal_" in element_filepath
+                        (".gr2" in swtor_filepath or
+                         ".hms" in swtor_filepath or
+                         ".lit" in swtor_filepath or
+                         ".mag" in swtor_filepath or
+                         ".spn_p" in swtor_filepath or
+                         ("dbo" in swtor_filepath and self.SAAboolSkipDBOObjects == False) )
+                         and not "_fadeportal_" in swtor_filepath
                         ):
                     
                         # Add json_name to element
                         element["json_name"] = json_name
-
+                        
                         # Calculate max name length For console output formatting
                         swtor_name_length = len(Path(element["assetName"]).stem)
                         if swtor_name_length > max_swtor_name_length:
                             max_swtor_name_length = swtor_name_length
 
-                        if ".hms" in element_filepath:
+                        if ".hms" in swtor_filepath:
                             has_terrain = True
 
-                        filtered_json_location_data.append(element)
 
-            # Append this .json data to the master list
-            swtor_location_data += filtered_json_location_data
 
-            print(LINEBACK + "DONE!")
+                        # Pre-process item for indirect object types
+                        # (.mag, .spn to plc, .spn to .plc to .dyn, etc.)
+                        # Use the most indirect first so that their results
+                        # are processed by the least indirect afterwards
+                        # as a temporary solution for their lack of
+                        # recursivity.
+                        
+                        swtor_id = element["id"]
+                        swtor_parent_id = element["parent"]
+                                                    
+                        if swtor_filepath.endswith("spn_p"):
+                            # .SPN_P OBJECT REFERENCE (non-NPC .SPN)
+                            
+                            if spn_table[swtor_filepath][-3:] == "dyn":
+                                print("DYN REFERENCE  ", end="")
+                                
+                                # pre-process dyn objects
+                                # WARNING: ZIP files internally use forward slashes as separators.
+                                # We have to cater to that when defining paths inside them.
+                                try:
+                                    zipped_filepath = spn_table[swtor_filepath].replace(".dyn", ".json").replace("\\", "/")
+                                    with dyn_zip.open(zipped_filepath, "r" ) as read_dyn_file:
+                                        dyn_file_data = json.load(read_dyn_file)
+                                except FileNotFoundError:
+                                    print(".json file not found")  # Console.
+                                    continue
+
+                                dyn_element = copy.deepcopy(element)
+
+                                for idx, dyn_obj in enumerate(dyn_file_data["dynPlaceable"]["dynVisualList"]["value"]["list"]):
+                                    dyn_element["assetName"] = dyn_obj["dynVisualFqn"]["value"]
+                                    if ".gr2" in dyn_element["assetName"] or ".mag" in dyn_element["assetName"]:
+                                        dyn_element["parent"] = swtor_id
+                                        dyn_element["id"] = swtor_id + "-" + str(idx)
+                                        
+                                        if "dynPosition" in dyn_obj:
+                                            dyn_element["position"][0] = dyn_obj["dynPosition"]["value"]["x"]
+                                            dyn_element["position"][1] = dyn_obj["dynPosition"]["value"]["y"]
+                                            dyn_element["position"][2] = dyn_obj["dynPosition"]["value"]["z"]
+                                        else:
+                                            dyn_element["position"] = [0,0,0]
+                        
+                                        if "dynRotation" in dyn_obj:
+                                            dyn_element["rotation"][0] = dyn_obj["dynRotation"]["value"]["x"]
+                                            dyn_element["rotation"][1] = dyn_obj["dynRotation"]["value"]["y"]
+                                            dyn_element["rotation"][2] = dyn_obj["dynRotation"]["value"]["z"]
+                                        else:
+                                            dyn_element["rotation"] = [0,0,0]
+
+                                        if "dynScale" in dyn_obj:
+                                            dyn_element["scale"][0] = dyn_obj["dynScale"]["value"]["x"]
+                                            dyn_element["scale"][1] = dyn_obj["dynScale"]["value"]["y"]
+                                            dyn_element["scale"][2] = dyn_obj["dynScale"]["value"]["z"]
+                                        else:
+                                            dyn_element["scale"] = [1,1,1]
+
+                                        dyn_element["make_dyn_empty"] = False
+                                        
+                                        indirect_object_elements.append(dyn_element)
+                                    
+                                element["make_dyn_empty"] = True
+
+                            elif ".gr2" in spn_table[swtor_filepath] or ".mag" in spn_table[swtor_filepath]:
+                                element["make_dyn_empty"] = False
+                                swtor_filepath = spn_table[swtor_filepath]
+                                
+                            if swtor_filepath.startswith("/") or swtor_filepath.startswith("\\"):
+                                swtor_filepath = swtor_filepath[1:]
+                            element["assetName"] = swtor_filepath
+                            swtor_name = Path(swtor_filepath).stem
+                            print("SPN REFERENCE  ", end="")
+
+            json_location_data += indirect_object_elements
+            
+            swtor_location_data += (json_location_data)
+
+
 
             # Create Collections.
 
@@ -305,6 +428,8 @@ class addonMenuItem(Operator, ImportHelper):
                 light_data.energy = 2
 
                 Lights_count = 0
+
+        print(LINEBACK + "DONE!")
 
 
 
@@ -364,8 +489,8 @@ class addonMenuItem(Operator, ImportHelper):
 
         # Percentage of progress stuff. It's based on number
         # of elements, although most will be discarded (non-objects). 
-        items_to_process = len(swtor_location_data)
-        items_processed = 0
+        amount_to_process = len(swtor_location_data)
+        amount_processed = 0
 
 
         # LOOP THROUGH ELEMENTS STARTS HERE ----------------------------------------
@@ -373,20 +498,22 @@ class addonMenuItem(Operator, ImportHelper):
 
         print("\n\nPROCESSING AREA OBJECTS' DATA:\n------------------------------\n")
 
-        for item in swtor_location_data:
-            items_processed += 1
+        for element in swtor_location_data:
+            amount_processed += 1
 
             # For .json file elements with transforms but no assetName at all.
             # Last time it happened it was a bug in Jedipedia. Just in case…
-            if not "assetName" in item:
-                print("WARNING: item with id "+ item["id"] + " lacks assetName")
+            if not "assetName" in element:
+                print("WARNING: item with id "+ element["id"] + " lacks assetName")
                 continue
 
             # Set some variables that will be used per element constantly.
-            swtor_filepath = item["assetName"]
+            swtor_filepath = element["assetName"]
             if not (swtor_filepath.endswith("gr2") or
                     swtor_filepath.endswith("lit") or
                     swtor_filepath.endswith("hms") or
+                    swtor_filepath.endswith("mag") or
+                    swtor_filepath.endswith("spn_p") or
                     ("dbo" in swtor_filepath and self.SAAboolSkipDBOObjects == False)
                     ):
                 continue
@@ -395,11 +522,11 @@ class addonMenuItem(Operator, ImportHelper):
             if swtor_filepath.startswith("/") or swtor_filepath.startswith("\\"):
                 swtor_filepath = swtor_filepath[1:]
 
-            swtor_id = item["id"]
-            swtor_parent_id = item["parent"]
+            swtor_id = element["id"]
+            swtor_parent_id = element["parent"]
             swtor_name = Path(swtor_filepath).stem
 
-            json_name = item["json_name"]
+            json_name = element["json_name"]
 
 
             # Unlikely to happen, but…
@@ -434,20 +561,19 @@ class addonMenuItem(Operator, ImportHelper):
 
                 # TERRAIN OBJECT. ---------------------------------
 
-                print(f'{LINEBACK}{items_processed * 100 / items_to_process:6.2f} %   AREA: {json_name:<{max_json_name_length}}   ID: {swtor_id}   -- TERRAIN OBJECT --   ', end="")
+                print(f'{LINEBACK}{amount_processed * 100 / amount_to_process:6.2f} %   AREA: {json_name:<{max_json_name_length}}   ID: {swtor_id}   -- TERRAIN OBJECT --   ', end="")
 
                 if terrain_folderpath is None:
                     print("WARNING: NO RESOURCES\\WORLD\\HEIGHTMAPS FOLDER AVAILABLE")
                     continue
 
-                # Collection where the light object will be moved to
+                # Collection where the terrain object will be moved to
                 if self.SAAboolCollectionObjects == True:
                     location_terrains_collection  = bpy.data.collections[json_name + " - Terrain"]
                 else:
                     location_terrains_collection  = bpy.data.collections[json_name]
 
                 terrain_path = str(terrain_folderpath / Path(swtor_id + ".obj") )
-
 
                 # ACTUAL IMPORTING:
                 # …through Blender's bpy.ops.import_scene.obj addon.
@@ -476,14 +602,56 @@ class addonMenuItem(Operator, ImportHelper):
                 blender_object.name = swtor_id
 
                 link_objects_to_collection(blender_object, location_terrains_collection, move = True)
+                
 
+            elif element["make_dyn_empty"] == True:
+                
+                # DYN PARENT. ---------------------------------
+                
+                # As some indirect objects result into multiple .gr2, .mag, etc.
+                # an Empty is necessary to parent them and pass them transforms.
+                # .dyn are the only case so far, but there could be more.
 
+                blender_object = bpy.data.objects.new(swtor_id, None)
+                blender_object.empty_display_size = 1.0
+                blender_object.empty_display_type = 'CUBE'
+                
+                # Collection where the Empty will be moved to
+                if self.SAAboolCollectionObjects == True:
+                    location_objects_collection = bpy.data.collections[json_name + " - Objects"]
+                else:
+                    location_objects_collection = bpy.data.collections[json_name]
+
+                link_objects_to_collection(blender_object, location_objects_collection, move = True)
 
             else:
 
-                # MESH OBJECT. ----------------------------------
+                # MESH OBJECT  ----------------------------------
 
-                print(f'{LINEBACK}{items_processed * 100 / items_to_process:6.2f} %   AREA: {json_name:<{max_json_name_length}}   ID: {swtor_id}   NAME: {swtor_name:{max_swtor_name_length}}', end="")
+                print(f'{LINEBACK}{amount_processed * 100 / amount_to_process:6.2f} %   AREA: {json_name:<{max_json_name_length}}   ID: {swtor_id}   NAME: {swtor_name:{max_swtor_name_length}}', end="")
+
+
+                if swtor_filepath.endswith("mag"):
+                    # .MAG OBJECT REFERENCE
+                    try:
+                        with open( str( Path(swtor_resources_folderpath) / Path(swtor_filepath) ), "r") as read_mag_file:
+                            if ".gr2" in read_mag_file:
+                                for dyn_obj in read_mag_file:
+                                    if ".gr2" in dyn_obj:
+                                        swtor_filepath = dyn_obj.split("Mesh=")[1]
+                                        if swtor_filepath.startswith("/") or swtor_filepath.startswith("\\"):
+                                            swtor_filepath = swtor_filepath[1:]
+                                        element["assetName"] = swtor_filepath
+                                        break
+                            else:
+                                print("  WARNING: NO .GR2 OBJECT REFERENCED IN FILE")
+                                continue
+                    except FileNotFoundError:
+                        print(" -- file not found")  # Console.
+                        continue
+
+
+
 
                 # Collection where the objects will be moved to
                 if self.SAAboolCollectionObjects == True:
@@ -493,7 +661,7 @@ class addonMenuItem(Operator, ImportHelper):
 
                 if swtor_filepath not in already_existing_objects:
 
-                    # ACTUAL IMPORTING:
+                    # IMPORTING NEW OBJECTS:
                     # …through Darth Atroxa's bpy.ops.import_mesh.gr2.
                     # Does a after-minus-before bpy.data.objects check to determine
                     # the objects resulting from the importing, as the addon doesn't
@@ -520,7 +688,7 @@ class addonMenuItem(Operator, ImportHelper):
 
                 else:
                     
-                    # DUPLICATING:
+                    # DUPLICATING ALREADY IMPORTED OBJECTS AS INSTANCES:
                     # …To make the importing faster. If object's path is in the already_existing_objects dict,
                     # don't import through the .gr2 Addon and just duplicate from mesh data.
 
@@ -572,7 +740,7 @@ class addonMenuItem(Operator, ImportHelper):
                     # Add imported object's path and mesh data to dedupe dict.
                     already_existing_objects[swtor_filepath] = [blender_object.data]
 
-                    # If object is a bdo, replace it with an Empty to
+                    # If object is a dbo, replace it with an Empty to
                     # cover for it being a parent object
                     if swtor_name.startswith("dbo"):
                         if self.SAAboolSkipDBOObjects == True:
@@ -705,17 +873,17 @@ class addonMenuItem(Operator, ImportHelper):
             # parenting stage that we don't know how to correct.
 
             if not swtor_name.endswith("hms"):
-                position = [item["position"][0], 
-                            item["position"][1],
-                            item["position"][2]]
+                position = [element["position"][0], 
+                            element["position"][1],
+                            element["position"][2]]
             
-                rotation = [radians( item["rotation"][0]), 
-                            radians( item["rotation"][1]),
-                            radians( item["rotation"][2])]
+                rotation = [radians( element["rotation"][0]), 
+                            radians( element["rotation"][1]),
+                            radians( element["rotation"][2])]
 
-                scale =    [item["scale"][0], 
-                            item["scale"][1],
-                            item["scale"][2]]
+                scale =    [element["scale"][0], 
+                            element["scale"][1],
+                            element["scale"][2]]
             else:
                 scale = [0.001, 0.001, 0.001]
             blender_object.location = position
@@ -755,19 +923,19 @@ class addonMenuItem(Operator, ImportHelper):
 
         print("\n\nPARENTING OBJECTS:\n------------------\n")
 
-        items_processed = 0
-        for item in swtor_location_data:
-            items_processed += 1
-            swtor_id = item["id"]
+        amount_processed = 0
+        for element in swtor_location_data:
+            amount_processed += 1
+            swtor_id = element["id"]
             if swtor_id in bpy.data.objects:
-                swtor_parent_id = item["parent"]
+                swtor_parent_id = element["parent"]
                 if swtor_parent_id != "0":
                     if swtor_parent_id in bpy.data.objects:
-                        print(f"{LINEBACK}{items_processed * 100 / items_to_process:6.2f} %  Parenting  {swtor_id}  to  {swtor_parent_id}")
+                        print(f"{LINEBACK}{amount_processed * 100 / amount_to_process:6.2f} %  Parenting  {swtor_id}  to  {swtor_parent_id}")
                         parent_with_transformations(bpy.data.objects[swtor_id], bpy.data.objects[swtor_parent_id], inherit_transformations = True)
                     else:
-                        print(f"{LINEBACK}{items_processed * 100 / items_to_process:6.2f} %  Parenting  {swtor_id}  to  {swtor_parent_id}  FAILED!!! Parent doesn't exist")
-                        print(f"          AREA: {item['json_name']:<{max_json_name_length}}   ORPHANED OBJECT: {str(Path(item['assetName']).stem):{max_swtor_name_length}}")
+                        print(f"{LINEBACK}{amount_processed * 100 / amount_to_process:6.2f} %  Parenting  {swtor_id}  to  {swtor_parent_id}  FAILED!!! Parent doesn't exist")
+                        print(f"          AREA: {element['json_name']:<{max_json_name_length}}   ORPHANED OBJECT: {str(Path(element['assetName']).stem):{max_swtor_name_length}}")
                         print()
         bpy.ops.object.select_all(action="DESELECT")
         bpy.context.view_layer.objects.active = None
@@ -780,15 +948,15 @@ class addonMenuItem(Operator, ImportHelper):
 
         print("\n\nRENAMING OBJECTS:\n-----------------\n")
 
-        items_processed = 0
-        for item in swtor_location_data:
-            items_processed += 1
-            swtor_id = item["id"]
+        amount_processed = 0
+        for element in swtor_location_data:
+            amount_processed += 1
+            swtor_id = element["id"]
             if swtor_id in bpy.data.objects:
-                swtor_name = Path(item["assetName"]).stem
+                swtor_name = Path(element["assetName"]).stem
                 if swtor_name != "heightmap":
                     bpy.data.objects[swtor_id].name = swtor_name
-                    print(f"{LINEBACK}{items_processed * 100 / items_to_process:6.2f} %  Renaming  {swtor_id}  {swtor_name}")
+                    print(f"{LINEBACK}{amount_processed * 100 / amount_to_process:6.2f} %  Renaming  {swtor_id}  {swtor_name}")
 
         print(LINEBACK + "DONE!")
 
