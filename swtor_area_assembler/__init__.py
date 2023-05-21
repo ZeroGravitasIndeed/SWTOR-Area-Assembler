@@ -8,7 +8,7 @@ import bpy
 bl_info = {
     "name": "SWTOR Area Assembler",
     "author": "ZeroGravitas & Crunch",
-    "version": (1, 2, 0),
+    "version": (1, 3, 0),
     "blender": (3, 1, 0),
     "category": "SWTOR",
     "location": "File > Import > SWTOR (Area .json)",
