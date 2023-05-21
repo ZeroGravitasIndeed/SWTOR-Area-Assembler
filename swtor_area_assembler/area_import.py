@@ -282,6 +282,10 @@ class addonMenuItem(Operator, ImportHelper):
                     if swtor_filepath.startswith("/") or swtor_filepath.startswith("\\"):
                         swtor_filepath = swtor_filepath[1:]
                     element["assetName"] = swtor_filepath
+                    
+                    # Add json_name to element
+                    element["json_name"] = json_name
+
 
                     if (
                         (".gr2" in swtor_filepath or
@@ -293,11 +297,9 @@ class addonMenuItem(Operator, ImportHelper):
                          and not "_fadeportal_" in swtor_filepath
                         ):
                     
-                        # Add json_name to element
-                        element["json_name"] = json_name
                         
                         # Calculate max name length For console output formatting
-                        swtor_name_length = len(Path(element["assetName"]).stem)
+                        swtor_name_length = len(Path(element["assetName"]).stem) + 2
                         if swtor_name_length > max_swtor_name_length:
                             max_swtor_name_length = swtor_name_length
 
@@ -319,65 +321,68 @@ class addonMenuItem(Operator, ImportHelper):
                         if swtor_filepath.endswith("spn_p"):
                             # .SPN_P OBJECT REFERENCE (non-NPC .SPN)
                             
-                            if spn_table[swtor_filepath][-3:] == "dyn":
-                                print("DYN REFERENCE  ", end="")
-                                
-                                # pre-process dyn objects
-                                # WARNING: ZIP files internally use forward slashes as separators.
-                                # We have to cater to that when defining paths inside them.
-                                try:
-                                    zipped_filepath = spn_table[swtor_filepath].replace(".dyn", ".json").replace("\\", "/")
-                                    with dyn_zip.open(zipped_filepath, "r" ) as read_dyn_file:
-                                        dyn_file_data = json.load(read_dyn_file)
-                                except FileNotFoundError:
-                                    print(".json file not found")  # Console.
-                                    continue
-
-                                dyn_element = copy.deepcopy(element)
-
-                                for idx, dyn_obj in enumerate(dyn_file_data["dynPlaceable"]["dynVisualList"]["value"]["list"]):
-                                    dyn_element["assetName"] = dyn_obj["dynVisualFqn"]["value"]
-                                    if ".gr2" in dyn_element["assetName"] or ".mag" in dyn_element["assetName"]:
-                                        dyn_element["parent"] = swtor_id
-                                        dyn_element["id"] = swtor_id + "-" + str(idx)
-                                        
-                                        if "dynPosition" in dyn_obj:
-                                            dyn_element["position"][0] = dyn_obj["dynPosition"]["value"]["x"]
-                                            dyn_element["position"][1] = dyn_obj["dynPosition"]["value"]["y"]
-                                            dyn_element["position"][2] = dyn_obj["dynPosition"]["value"]["z"]
-                                        else:
-                                            dyn_element["position"] = [0,0,0]
-                        
-                                        if "dynRotation" in dyn_obj:
-                                            dyn_element["rotation"][0] = dyn_obj["dynRotation"]["value"]["x"]
-                                            dyn_element["rotation"][1] = dyn_obj["dynRotation"]["value"]["y"]
-                                            dyn_element["rotation"][2] = dyn_obj["dynRotation"]["value"]["z"]
-                                        else:
-                                            dyn_element["rotation"] = [0,0,0]
-
-                                        if "dynScale" in dyn_obj:
-                                            dyn_element["scale"][0] = dyn_obj["dynScale"]["value"]["x"]
-                                            dyn_element["scale"][1] = dyn_obj["dynScale"]["value"]["y"]
-                                            dyn_element["scale"][2] = dyn_obj["dynScale"]["value"]["z"]
-                                        else:
-                                            dyn_element["scale"] = [1,1,1]
-
-                                        dyn_element["make_dyn_empty"] = False
-                                        
-                                        indirect_object_elements.append(dyn_element)
+                            if swtor_filepath in spn_table:
+                                if spn_table[swtor_filepath][-3:] == "dyn":
                                     
-                                element["make_dyn_empty"] = True
+                                    # pre-process dyn objects
+                                    # WARNING: ZIP files internally use forward slashes as separators.
+                                    # We have to cater to that when defining paths inside them.
+                                    try:
+                                        zipped_filepath = spn_table[swtor_filepath].replace(".dyn", ".json").replace("\\", "/")
+                                        with dyn_zip.open(zipped_filepath, "r" ) as read_dyn_file:
+                                            dyn_file_data = json.load(read_dyn_file)
+                                    except FileNotFoundError:
+                                        print(".json file not found")  # Console.
+                                        continue
 
-                            elif ".gr2" in spn_table[swtor_filepath] or ".mag" in spn_table[swtor_filepath]:
-                                element["make_dyn_empty"] = False
-                                swtor_filepath = spn_table[swtor_filepath]
+                                    dyn_element = copy.deepcopy(element)
+
+                                    for idx, dyn_obj in enumerate(dyn_file_data["dynPlaceable"]["dynVisualList"]["value"]["list"]):
+                                        dyn_element["assetName"] = dyn_obj["dynVisualFqn"]["value"]
+                                        if ".gr2" in dyn_element["assetName"] or ".mag" in dyn_element["assetName"]:
+                                            dyn_element["parent"] = swtor_id
+                                            dyn_element["id"] = swtor_id + "-" + str(idx)
+                                            
+                                            if "dynPosition" in dyn_obj:
+                                                dyn_element["position"][0] = dyn_obj["dynPosition"]["value"]["x"]
+                                                dyn_element["position"][1] = dyn_obj["dynPosition"]["value"]["y"]
+                                                dyn_element["position"][2] = dyn_obj["dynPosition"]["value"]["z"]
+                                            else:
+                                                dyn_element["position"] = [0,0,0]
+                            
+                                            if "dynRotation" in dyn_obj:
+                                                dyn_element["rotation"][0] = dyn_obj["dynRotation"]["value"]["x"]
+                                                dyn_element["rotation"][1] = dyn_obj["dynRotation"]["value"]["y"]
+                                                dyn_element["rotation"][2] = dyn_obj["dynRotation"]["value"]["z"]
+                                            else:
+                                                dyn_element["rotation"] = [0,0,0]
+
+                                            if "dynScale" in dyn_obj:
+                                                dyn_element["scale"][0] = dyn_obj["dynScale"]["value"]["x"]
+                                                dyn_element["scale"][1] = dyn_obj["dynScale"]["value"]["y"]
+                                                dyn_element["scale"][2] = dyn_obj["dynScale"]["value"]["z"]
+                                            else:
+                                                dyn_element["scale"] = [1,1,1]
+
+                                            dyn_element["make_dyn_empty"] = False
+                                            
+                                            indirect_object_elements.append(dyn_element)
+                                        
+                                    element["make_dyn_empty"] = True
+
+                            
+                                elif ".gr2" in spn_table[swtor_filepath] or ".mag" in spn_table[swtor_filepath]:
+                                    element["make_dyn_empty"] = False
+                                    swtor_filepath = spn_table[swtor_filepath]
+                                    
+                                if swtor_filepath.startswith("/") or swtor_filepath.startswith("\\"):
+                                    swtor_filepath = swtor_filepath[1:]
+                                element["assetName"] = swtor_filepath
+                                swtor_name = Path(swtor_filepath).stem
                                 
-                            if swtor_filepath.startswith("/") or swtor_filepath.startswith("\\"):
-                                swtor_filepath = swtor_filepath[1:]
-                            element["assetName"] = swtor_filepath
-                            swtor_name = Path(swtor_filepath).stem
-                            print("SPN REFERENCE  ", end="")
-
+                            else:
+                                continue
+                            
             json_location_data += indirect_object_elements
             
             swtor_location_data += (json_location_data)
@@ -613,7 +618,7 @@ class addonMenuItem(Operator, ImportHelper):
                 # .dyn are the only case so far, but there could be more.
 
                 blender_object = bpy.data.objects.new(swtor_id, None)
-                blender_object.empty_display_size = 1.0
+                blender_object.empty_display_size = 0.1
                 blender_object.empty_display_type = 'CUBE'
                 
                 # Collection where the Empty will be moved to
@@ -668,23 +673,28 @@ class addonMenuItem(Operator, ImportHelper):
                     # return that information.
                     
                     objects_before_importing = list(bpy.data.objects)
-                    try:
-                        with suppress_stdout():  # To silence Darth Atroxa's print() outputs
-                            result = bpy.ops.import_mesh.gr2(filepath = str( Path(swtor_resources_folderpath) / Path(swtor_filepath) ))
-                        if result == "CANCELLED":
-                            print(f"\n\nWARNING: .gr2 importer addon failed to import {swtor_id} - {str( Path(swtor_resources_folderpath) / Path(swtor_filepath) )}\n")
+                    gr2_filepath = str( Path(swtor_resources_folderpath) / Path(swtor_filepath) )
+                    if os.path.isfile(gr2_filepath):
+                        try:
+                            with suppress_stdout():  # To silence Darth Atroxa's print() outputs
+                                result = bpy.ops.import_mesh.gr2(filepath=gr2_filepath)
+                            if result == "CANCELLED":
+                                print(f"\n\nWARNING: .gr2 importer addon failed to import {swtor_id} - {str( Path(swtor_resources_folderpath) / Path(swtor_filepath) )}\n")
+                                continue
+                            else:
+                                print("IMPORTED    ", end="")
+                        except:
+                            print(f"\n\nWARNING: the .gr2 Importer addon CRASHED while importing:\n{swtor_id} - {str( Path(swtor_resources_folderpath) / Path(swtor_filepath) )}\n")
+                            print("Despite that, the Area Importer addon will keep on importing the rest of the objects")
                             continue
-                        else:
-                            print("IMPORTED    ", end="")
-                    except:
-                        print(f"\n\nWARNING: the .gr2 Importer addon CRASHED while importing:\n{swtor_id} - {str( Path(swtor_resources_folderpath) / Path(swtor_filepath) )}\n")
-                        print("Despite that, the Area Importer addon will keep on importing the rest of the objects")
-                        continue
-                    objects_after_importing = list(bpy.data.objects)
-                    imported_objects = list(set(objects_after_importing) - set(objects_before_importing))
-                    imported_objects_amount = len(imported_objects)
+                        objects_after_importing = list(bpy.data.objects)
+                        imported_objects = list(set(objects_after_importing) - set(objects_before_importing))
+                        imported_objects_amount = len(imported_objects)
 
-                    link_objects_to_collection(imported_objects, location_objects_collection, move = True)
+                        link_objects_to_collection(imported_objects, location_objects_collection, move = True)
+                    else:
+                        print("NOT PRESENT AMONG ASSETS. DISCARDED")
+                        continue
 
                 else:
                     
@@ -960,6 +970,29 @@ class addonMenuItem(Operator, ImportHelper):
 
         print(LINEBACK + "DONE!")
 
+
+
+        # Non-parenting Empties clean-up pass
+
+        print("\n\DELETING UNUSED EMPTIES:\n------------------------\n")
+        scene = bpy.context.scene
+
+        # Create a list to store empties that should be deleted
+        empties_to_delete = []
+
+        # Iterate through all objects in the scene
+        for obj in scene.objects:
+            if obj.type == 'EMPTY':
+                # Check if the empty is a parent or child of other objects
+                if not obj.parent and not obj.children:
+                    empties_to_delete.append(obj)
+
+        # Delete the unused empties
+        for obj in empties_to_delete:
+            bpy.data.objects.remove(obj, do_unlink=True)     
+        
+        print(LINEBACK + "DONE!")
+        
 
     # -------------------------------------------------------------------------------
     # FINAL ROTATION OF THE WHOLE AREA ----------------------------------------------
