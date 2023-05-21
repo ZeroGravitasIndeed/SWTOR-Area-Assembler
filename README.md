@@ -15,7 +15,7 @@ It is recommended to toggle Blender's System Console to watch the addon's progre
 ---
 ## Changelog:
 
-**v.1.3.0: Importing of placeables:**
+**v.1.3.0: Support for placeables:**
 Importing of placeables, both static (.plc directly mentioning .gr2 and .mag) and dynamic (.plc mentioning .dyn that in turn contain .gr2 and .mag). That means that objects such as GTN booths, holoprojectors, spaceship cockpit's seats, etc. that weren't appearing in the imported scenes now do.
 
 Some caveats:
@@ -29,7 +29,8 @@ Some caveats:
 * Lights generation's defaults change to not creating them.
 ---
 **v.1.1.3:**
-Added trapping for lack of terrain folder to avoid scary error messages.
+
+* Added trapping for lack of terrain folder to avoid scary error messages.
 ---
 **v.1.1.2:**
 Minor per area-Collections changes:
