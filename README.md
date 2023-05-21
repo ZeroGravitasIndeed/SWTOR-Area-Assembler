@@ -19,7 +19,7 @@ It is recommended to toggle Blender's System Console to watch the addon's progre
 Importing of placeables, both static (.plc directly mentioning .gr2 and .mag) and dynamic (.plc mentioning .dyn that in turn contain .gr2 and .mag). That means that objects such as GTN booths, holoprojectors, spaceship cockpit's seats, etc. that weren't appearing in the imported scenes now do.
 
 Some caveats:
-* The addon's size has grown up to 17 MB. That's because it houses a compressed export of SWTOR's .dyn objects nodetree (dyn.zip). THERE'S NO NEED TO DECOMPRESS IT: the addon reads its internal zipped data. We are thinking about future strategies to make such kinds of data available to all addons and avoid duplication.
+* **The addon's size has grown up to 17 MB!!!** That's because it houses a compressed export of SWTOR's .dyn objects nodetree (dyn.zip). **THERE'S NO NEED TO DECOMPRESS IT**: the addon reads its internal zipped data. We are thinking about future strategies to make such kinds of data available to all addons and avoid duplication.
 * There are some object types still unsupported, such as .fxp ones that will be difficult to do other than just dropping their meshes into the scene to make them available, no guarantees about proper transformations. Giving notice of anything missing or weird in our Discord would be appreciated.
 * There could be crashes. We seem to be trapping all errors so far. Fingers crossed.
 ---
