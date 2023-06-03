@@ -12,6 +12,7 @@ It is recommended to toggle Blender's System Console to watch the addon's progre
 
 ### Full usage guide **[here](https://github.com/SWTOR-Slicers/WikiPedia/wiki/Assembling-SWTOR-Game-Areas-via-the-SWTOR-Area-Assembler-Addon-for-Blender)**.
 
+<<<<<<< HEAD
 ___
 **V.1.3.1: Addon-crashing bug corrected:**
 Extensions in .json entries' filepaths weren't thorough enough. Now they are.
@@ -19,6 +20,13 @@ Extensions in .json entries' filepaths weren't thorough enough. Now they are.
 ___
 **v.1.3.0: Support for placeables:**
 Importing of placeables, both static (.plc directly mentioning .gr2 and .mag) and dynamic (.plc mentioning .dyn that in turn contain .gr2 and .mag). That means that objects such as GTN booths, holoprojectors, spaceship cockpit's seats, etc. that weren't appearing in the imported scenes show up now.
+=======
+---
+## Changelog:
+
+**v.1.3.0: Support for placeables:**
+Importing of placeables, both static (.plc directly mentioning .gr2 and .mag) and dynamic (.plc mentioning .dyn that in turn contain .gr2 and .mag). That means that objects such as GTN booths, holoprojectors, spaceship cockpit's seats, etc. that weren't appearing in the imported scenes now do.
+>>>>>>> 0409caa4a26c9a55a5e51388dc3e1b2e5a838ebd
 
 Some caveats:
 * **The addon's size has grown up to 17 MB!!!** That's because it houses a compressed export of SWTOR's .dyn objects nodetree (dyn.zip). **THERE'S NO NEED TO DECOMPRESS IT**: the addon reads its internal zipped data. We are thinking about future strategies to make such kinds of data available to all addons and avoid duplication.
@@ -55,4 +63,7 @@ In order to deal with two kinds of enormous area imports that leave Blender in a
     **Recommended when importing a massive number of areas, such as whole worlds.**
 
 (Excluding Collections resets the hide/show state of the Collections' contents. The **Hide Objects After Importing** option won't have an effect if the **Exclude Collections After Importing** option is on)
+<<<<<<< HEAD
 ts. The **Hide Objects After Importing** option won't have an effect if the **Exclude Collections After Importing** option is on)
+=======
+>>>>>>> 0409caa4a26c9a55a5e51388dc3e1b2e5a838ebd
