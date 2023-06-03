@@ -11,8 +11,10 @@ It is recommended to toggle Blender's System Console to watch the addon's progre
 ### Download the latest version of the Addon from **[here](https://github.com/SWTOR-Slicers/SWTOR-Area-Assembler/releases)**.
 
 ### Full usage guide **[here](https://github.com/SWTOR-Slicers/WikiPedia/wiki/Assembling-SWTOR-Game-Areas-via-the-SWTOR-Area-Assembler-Addon-for-Blender)**.
-
 ___
+
+CHANGELOG:
+
 **V.1.3.1: Addon-crashing bug corrected:**
 Extensions in .json entries' filepaths weren't thorough enough. Now they are.
 * There's still an issue with some collision objects being parents of others. Somehow they are being filtered out even when not meant to. Investigating…
