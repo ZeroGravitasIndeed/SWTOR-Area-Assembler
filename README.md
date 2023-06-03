@@ -16,7 +16,7 @@ ___
 CHANGELOG:
 
 **V.1.3.1: Addon-crashing bug corrected:**
-Extensions in .json entries' filepaths weren't thorough enough. Now they are.
+Extensions filtering in .json entries' filepaths weren't thorough enough. Now they are.
 * There's still an issue with some collision objects being parents of others. Somehow they are being filtered out even when not meant to. Investigating…
 ___
 **v.1.3.0: Support for placeables:**
