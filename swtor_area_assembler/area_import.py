@@ -318,7 +318,7 @@ class addonMenuItem(Operator, ImportHelper):
                         swtor_id = element["id"]
                         swtor_parent_id = element["parent"]
                                                     
-                        if swtor_filepath.endswith("spn_p"):
+                        if swtor_filepath.endswith(".spn_p"):
                             # .SPN_P OBJECT REFERENCE (non-NPC .SPN)
                             
                             if swtor_filepath in spn_table:
@@ -514,11 +514,11 @@ class addonMenuItem(Operator, ImportHelper):
 
             # Set some variables that will be used per element constantly.
             swtor_filepath = element["assetName"]
-            if not (swtor_filepath.endswith("gr2") or
-                    swtor_filepath.endswith("lit") or
-                    swtor_filepath.endswith("hms") or
-                    swtor_filepath.endswith("mag") or
-                    swtor_filepath.endswith("spn_p") or
+            if not (swtor_filepath.endswith(".gr2") or
+                    swtor_filepath.endswith(".lit") or
+                    swtor_filepath.endswith(".hms") or
+                    swtor_filepath.endswith(".mag") or
+                    swtor_filepath.endswith(".spn_p") or
                     ("dbo" in swtor_filepath and self.SAAboolSkipDBOObjects == False)
                     ):
                 continue
@@ -541,7 +541,7 @@ class addonMenuItem(Operator, ImportHelper):
             
 
 
-            if swtor_filepath.endswith("lit"):
+            if swtor_filepath.endswith(".lit"):
 
                 # LIGHT OBJECT. ----------------------------------
 
@@ -562,7 +562,7 @@ class addonMenuItem(Operator, ImportHelper):
                     continue
 
 
-            elif swtor_filepath.endswith("hms"):
+            elif swtor_filepath.endswith(".hms"):
 
                 # TERRAIN OBJECT. ---------------------------------
 
@@ -636,7 +636,7 @@ class addonMenuItem(Operator, ImportHelper):
                 print(f'{LINEBACK}{amount_processed * 100 / amount_to_process:6.2f} %   AREA: {json_name:<{max_json_name_length}}   ID: {swtor_id}   NAME: {swtor_name:{max_swtor_name_length}}', end="")
 
 
-                if swtor_filepath.endswith("mag"):
+                if swtor_filepath.endswith(".mag"):
                     # .MAG OBJECT REFERENCE
                     try:
                         with open( str( Path(swtor_resources_folderpath) / Path(swtor_filepath) ), "r") as read_mag_file:
@@ -693,7 +693,7 @@ class addonMenuItem(Operator, ImportHelper):
 
                         link_objects_to_collection(imported_objects, location_objects_collection, move = True)
                     else:
-                        print("NOT PRESENT AMONG ASSETS. DISCARDED")
+                        print("FILE NOT FOUND. DISCARDED")
                         continue
 
                 else:
@@ -882,7 +882,7 @@ class addonMenuItem(Operator, ImportHelper):
             # would lead to extra nested rotations after the general
             # parenting stage that we don't know how to correct.
 
-            if not swtor_name.endswith("hms"):
+            if not swtor_name.endswith(".hms"):
                 position = [element["position"][0], 
                             element["position"][1],
                             element["position"][2]]
@@ -902,7 +902,7 @@ class addonMenuItem(Operator, ImportHelper):
             blender_object.scale = scale
 
             # Resize lights to something more reasonable
-            if swtor_name.endswith("lit"):
+            if swtor_name.endswith(".lit"):
                 scale = scale / 10
 
             # Fill custom properties to the object to facilitate
@@ -1159,7 +1159,7 @@ if __name__ == "__main__":
 
 
 # -------------------------------------------------------------------------------
-# START UTLITY FUNCTIONS --------------------------------------------------------
+# UTLITY FUNCTIONS --------------------------------------------------------------
 # -------------------------------------------------------------------------------
 
 
@@ -1170,7 +1170,7 @@ if __name__ == "__main__":
 
 @contextlib.contextmanager
 def suppress_stdout(suppress=True):
-    # Output to console supressor for hiding .gr2 addon
+    # Console output supressor for hiding the .gr2 addon's output.
     # Use suppress=False to allow for specific outputs
     # in the middle of a suppressed block of code.
     # Usage is:
@@ -1187,6 +1187,62 @@ def suppress_stdout(suppress=True):
                 sys.stdout = old_stdout
     else:
         yield
+
+
+# Cre
+
+def encase_objects_with_empty(objects, empty_name = "Empty", collection_name = ""):
+    # Create a new Empty object
+    empty = bpy.data.objects.new(empty_name, None)
+    if collection_name == "":
+        bpy.context.collection.objects.link(empty)
+    else:
+        if collection_name not in bpy.data.collections:
+            bpy.data.collections.new(collection_name)
+        bpy.data.collections[collection_name].objects.link(empty)
+        
+    # Set the Empty object's display type to 'CUBE'
+    empty.empty_display_type = 'CUBE'
+
+    # Set the Empty object's origin to the center of its base
+    empty.matrix_world = calculate_base_center_matrix(objects)
+
+    # Parent objects to the Empty object
+    for obj in objects:
+        obj.parent = empty
+        
+    return empty
+    
+def calculate_base_center_matrix(objects):
+    # Find the minimum and maximum coordinates of all objects' bounding boxes
+    min_x, min_y, min_z = float('inf'), float('inf'), float('inf')
+    max_x, max_y, max_z = float('-inf'), float('-inf'), float('-inf')
+
+    for obj in objects:
+        bbox = obj.bound_box
+        for vertex in bbox:
+            min_x = min(min_x, vertex[0])
+            min_y = min(min_y, vertex[1])
+            min_z = min(min_z, vertex[2])
+            max_x = max(max_x, vertex[0])
+            max_y = max(max_y, vertex[1])
+            max_z = max(max_z, vertex[2])
+
+    # Calculate the center of the base
+    base_center = (
+        (min_x + max_x) / 2,
+        (min_y + max_y) / 2,
+        min_z
+    )
+
+    # Calculate the translation vector to move the origin
+    translation_vector = -base_center
+
+    # Create a translation matrix
+    translation_matrix = Matrix.Translation(translation_vector)
+
+    return translation_matrix
+
 
 
 

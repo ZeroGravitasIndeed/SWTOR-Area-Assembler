@@ -11,10 +11,14 @@ It is recommended to toggle Blender's System Console to watch the addon's progre
 ### Download the latest version of the Addon from **[here](https://github.com/SWTOR-Slicers/SWTOR-Area-Assembler/releases)**.
 
 ### Full usage guide **[here](https://github.com/SWTOR-Slicers/WikiPedia/wiki/Assembling-SWTOR-Game-Areas-via-the-SWTOR-Area-Assembler-Addon-for-Blender)**.
+___
 
----
-## Changelog:
+CHANGELOG:
 
+**V.1.3.1: Addon-crashing bug corrected:**
+Extensions in .json entries' filepaths weren't thorough enough. Now they are.
+* There's still an issue with some collision objects being parents of others. Somehow they are being filtered out even when not meant to. Investigating…
+___
 **v.1.3.0: Support for placeables:**
 Importing of placeables, both static (.plc directly mentioning .gr2 and .mag) and dynamic (.plc mentioning .dyn that in turn contain .gr2 and .mag). That means that objects such as GTN booths, holoprojectors, spaceship cockpit's seats, etc. that weren't appearing in the imported scenes show up now.
 
@@ -51,5 +55,5 @@ In order to deal with two kinds of enormous area imports that leave Blender in a
     Resulting Collections are excluded (checkbox in Outliner, 'e' shortcut') to keep Blender fully responsive and be able to manage them without lag. Excluded Collections won't list their objects in the Outliner: that's normal.
 
     **Recommended when importing a massive number of areas, such as whole worlds.**
-
-(Excluding Collections resets the hide/show state of the Collections' contents. The **Hide Objects After Importing** option won't have an effect if the **Exclude Collections After Importing** option is on)
+    
+    (Excluding Collections resets the hide/show state of the Collections' contents. The **Hide Objects After Importing** option won't have an effect if the **Exclude Collections After Importing** option is on)
