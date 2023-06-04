@@ -338,35 +338,38 @@ class addonMenuItem(Operator, ImportHelper):
                                     dyn_element = copy.deepcopy(element)
 
                                     for idx, dyn_obj in enumerate(dyn_file_data["dynPlaceable"]["dynVisualList"]["value"]["list"]):
-                                        dyn_element["assetName"] = dyn_obj["dynVisualFqn"]["value"]
-                                        if ".gr2" in dyn_element["assetName"] or ".mag" in dyn_element["assetName"]:
-                                            dyn_element["parent"] = swtor_id
-                                            dyn_element["id"] = swtor_id + "-" + str(idx)
-                                            
-                                            if "dynPosition" in dyn_obj:
-                                                dyn_element["position"][0] = dyn_obj["dynPosition"]["value"]["x"]
-                                                dyn_element["position"][1] = dyn_obj["dynPosition"]["value"]["y"]
-                                                dyn_element["position"][2] = dyn_obj["dynPosition"]["value"]["z"]
-                                            else:
-                                                dyn_element["position"] = [0,0,0]
-                            
-                                            if "dynRotation" in dyn_obj:
-                                                dyn_element["rotation"][0] = dyn_obj["dynRotation"]["value"]["x"]
-                                                dyn_element["rotation"][1] = dyn_obj["dynRotation"]["value"]["y"]
-                                                dyn_element["rotation"][2] = dyn_obj["dynRotation"]["value"]["z"]
-                                            else:
-                                                dyn_element["rotation"] = [0,0,0]
+                                        if "dynVisualFqn" in dyn_obj:
+                                            dyn_element["assetName"] = dyn_obj["dynVisualFqn"]["value"]
+                                            if ".gr2" in dyn_element["assetName"] or ".mag" in dyn_element["assetName"]:
+                                                dyn_element["parent"] = swtor_id
+                                                dyn_element["id"] = swtor_id + "-" + str(idx)
+                                                
+                                                if "dynPosition" in dyn_obj:
+                                                    dyn_element["position"][0] = dyn_obj["dynPosition"]["value"]["x"]
+                                                    dyn_element["position"][1] = dyn_obj["dynPosition"]["value"]["y"]
+                                                    dyn_element["position"][2] = dyn_obj["dynPosition"]["value"]["z"]
+                                                else:
+                                                    dyn_element["position"] = [0,0,0]
+                                
+                                                if "dynRotation" in dyn_obj:
+                                                    dyn_element["rotation"][0] = dyn_obj["dynRotation"]["value"]["x"]
+                                                    dyn_element["rotation"][1] = dyn_obj["dynRotation"]["value"]["y"]
+                                                    dyn_element["rotation"][2] = dyn_obj["dynRotation"]["value"]["z"]
+                                                else:
+                                                    dyn_element["rotation"] = [0,0,0]
 
-                                            if "dynScale" in dyn_obj:
-                                                dyn_element["scale"][0] = dyn_obj["dynScale"]["value"]["x"]
-                                                dyn_element["scale"][1] = dyn_obj["dynScale"]["value"]["y"]
-                                                dyn_element["scale"][2] = dyn_obj["dynScale"]["value"]["z"]
-                                            else:
-                                                dyn_element["scale"] = [1,1,1]
+                                                if "dynScale" in dyn_obj:
+                                                    dyn_element["scale"][0] = dyn_obj["dynScale"]["value"]["x"]
+                                                    dyn_element["scale"][1] = dyn_obj["dynScale"]["value"]["y"]
+                                                    dyn_element["scale"][2] = dyn_obj["dynScale"]["value"]["z"]
+                                                else:
+                                                    dyn_element["scale"] = [1,1,1]
 
-                                            dyn_element["make_dyn_empty"] = False
-                                            
-                                            indirect_object_elements.append(dyn_element)
+                                                dyn_element["make_dyn_empty"] = False
+                                                
+                                                indirect_object_elements.append(dyn_element)
+                                            else:
+                                                continue
                                         
                                     element["make_dyn_empty"] = True
 
@@ -974,7 +977,7 @@ class addonMenuItem(Operator, ImportHelper):
 
         # Non-parenting Empties clean-up pass
 
-        print("\n\DELETING UNUSED EMPTIES:\n------------------------\n")
+        print("\n\nDELETING UNUSED EMPTIES:\n------------------------\n")
         scene = bpy.context.scene
 
         # Create a list to store empties that should be deleted
