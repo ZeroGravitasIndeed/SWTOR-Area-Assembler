@@ -15,6 +15,11 @@ ___
 
 CHANGELOG:
 
+
+**V.1.3.2: Addon-crashing bug corrected:**
+FXspec-driven elements in .dyn objects weren't being properly filtered out and could crash the importing process (we are still looking at how to handle them in some minimum fashion).
+* There's still an issue with some collision objects being parents of others. Somehow they are being filtered out even when not meant to. Investigating…
+___
 **V.1.3.1: Addon-crashing bug corrected:**
 Extensions in .json entries' filepaths weren't thorough enough. Now they are.
 * There's still an issue with some collision objects being parents of others. Somehow they are being filtered out even when not meant to. Investigating…
