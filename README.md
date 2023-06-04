@@ -11,8 +11,10 @@ It is recommended to toggle Blender's System Console to watch the addon's progre
 ### Download the latest version of the Addon from **[here](https://github.com/SWTOR-Slicers/SWTOR-Area-Assembler/releases)**.
 
 ### Full usage guide **[here](https://github.com/SWTOR-Slicers/WikiPedia/wiki/Assembling-SWTOR-Game-Areas-via-the-SWTOR-Area-Assembler-Addon-for-Blender)**.
-
 ___
+
+CHANGELOG:
+
 
 **V.1.3.2: Addon-crashing bug corrected:**
 FXspec-driven elements in .dyn objects weren't being properly filtered out and could crash the importing process (we are still looking at how to handle them in some minimum fashion).
