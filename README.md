@@ -5,6 +5,7 @@ swtor_area_assembler is a Blender addon that imports Jedipedia.com's **[File Rea
 * The latest version of SWTOR Slicers' [.gr2 Importer Addon](https://github.com/SWTOR-Slicers/Granny2-Plug-In-Blender-2.8x),
 in order to be able to import SWTOR objects into Blender. If you are still using the Legacy version, you can have both installed and coexisting. Just activate the Modern one before using the swtor_area_assembler addon.
 * Setting in the addon's preferences the path to a "resources" folder in a SWTOR assets extraction produced by apps such as Slicers GUI or EasyMYP.
+* This Addon only imports the area's objects. In order to texture them, it is recommended to use the **[ZG SWTOR Tools](https://github.com/SWTOR-Slicers/ZG-SWTOR-Tools)**' materials processor.
 
 It is recommended to toggle Blender's System Console to watch the addon's progress when in use, as there are no other progress indicators yet.
 
