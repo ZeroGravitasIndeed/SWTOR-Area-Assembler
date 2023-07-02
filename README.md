@@ -7,7 +7,7 @@ in order to be able to import SWTOR objects into Blender. If you are still using
 * Setting in the addon's preferences the path to a "resources" folder in a SWTOR assets extraction produced by apps such as Slicers GUI or EasyMYP.
 * This Addon only imports the area's objects. In order to texture them, it is recommended to use the **[ZG SWTOR Tools](https://github.com/SWTOR-Slicers/ZG-SWTOR-Tools)**' materials processor.
 
-It is recommended to toggle Blender's System Console to watch the addon's progress when in use, as there are no other progress indicators yet.
+We advise to toggle Blender's System Console to watch the addon's progress when in use, as there are no other progress indicators yet. Some errors will inevitably arise, as this addon doesn't cover yet all area object cases (and sometimes the data includes objects that seem to have been deprecated), but despite them it ought to still be able to complete the task.
 
 ### Download the latest version of the Addon from **[here](https://github.com/SWTOR-Slicers/SWTOR-Area-Assembler/releases)**.
 
