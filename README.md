@@ -6,6 +6,7 @@ The **SWTOR Area Assembler** is a Blender add-on that imports and assembles Star
 
 ### Full usage guide **[here](https://github.com/SWTOR-Slicers/WikiPedia/wiki/Assembling-SWTOR-Game-Areas-via-the-SWTOR-Area-Assembler-Addon-for-Blender)**.
 
+
 ### Download the latest version of the Addon from **[here](https://github.com/SWTOR-Slicers/SWTOR-Area-Assembler/releases)**.
 
 ___
@@ -26,7 +27,7 @@ ___
 * There's still an issue with some collision objects being parents of others. Somehow they are being filtered out even when not meant to. Investigating…
 ___
 **V.1.3.1: Addon-crashing bug corrected:**
-Extensions in .json entries' filepaths weren't thorough enough. Now they are.
+Extensions filtering in .json entries' filepaths weren't thorough enough. Now they are.
 * There's still an issue with some collision objects being parents of others. Somehow they are being filtered out even when not meant to. Investigating…
 ___
 **v.1.3.0: Support for placeables:**
