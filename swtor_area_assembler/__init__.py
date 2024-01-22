@@ -8,24 +8,38 @@ import bpy
 bl_info = {
     "name": "SWTOR Area Assembler",
     "author": "ZeroGravitas & Crunch",
-    "version": (1, 3, 2),
-    "blender": (3, 1, 0),
+    "version": (1, 4, 0),
+    "blender": (3, 6, 0),
     "category": "SWTOR",
-    "location": "File > Import > SWTOR (Area .json)",
+    "location": "3D View > Sidebar > SWTOR Area Tools panel",
     "description": "Imports Jedipedia.net-exported SWTOR .DAT Files converted to .JSON Format",
-    "doc_url": "",
+    "doc_url": "https://github.com/SWTOR-Slicers/WikiPedia/wiki/Assembling-SWTOR-Game-Areas-via-the-SWTOR-Area-Assembler-Addon-for-Blender",
     "tracker_url": "",
 }
 
 # Add-on modules loader: 
 # Simplifies coding the loading of the modules to keeping a list of their names
 # (See https://b3d.interplanety.org/en/creating-multifile-add-on-for-blender/ )
-    
-modulesNames = [
-    'preferences',
-    'area_import',
-    ]
 
+# Determine Blender version
+blender_version_major_number, blender_version_minor_number , _ = bpy.app.version
+
+if blender_version_major_number == 4:
+    modulesNames = [
+        'preferences',
+        'area_import_4',
+        'process_named_mats_4',
+        'area_collections_exclude_include',
+        'ui',
+        ]
+else:
+    modulesNames = [
+        'preferences',
+        'area_import',
+        'process_named_mats',
+        'area_collections_exclude_include',
+        'ui',
+        ]
 
 
 modulesFullNames = {}

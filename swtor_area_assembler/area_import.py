@@ -15,6 +15,10 @@ import io
 import sys
 
 
+
+
+
+
 # -------------------------------------------------------------------------------
 # START WINDOW IMPORT -----------------------------------------------------------
 # -------------------------------------------------------------------------------
@@ -30,11 +34,34 @@ from bpy.props import (BoolProperty,
 from bpy.types import Operator
 
 
-class addonMenuItem(Operator, ImportHelper):
-    bl_label = "Import Area .json"
-    bl_idname = "import_area.area_json"  # important since its how bpy.ops.import_test.some_data is constructed
+
+
+class SWTOR_OT_area_assembler(Operator):
+    bl_idname = "swtor.area_assembler"
+    bl_label = "Import Area .json files"
     bl_description = "Import SWTOR Area data files (json) from Jedipedia.net's File Viewer.\n\nRequires:\n• Setting the path to an assets 'resources' folder in SWTOR Area Assembler's Addon Preferences.\n• An active Modern .gr2 importer Addon"
     bl_options = {'REGISTER', 'UNDO'}
+
+
+
+
+    # File Browser for selecting paths.json file
+    
+    def invoke(self, context, event):
+        # Match properties to UI's checkboxes
+        self.ApplyFinalRotation = context.scene.SAA_ApplyFinalRotation
+        self.ApplyMaterials = context.scene.SAA_ApplyMaterials
+        self.ApplySceneScale = context.scene.SAA_ApplySceneScale
+        self.SkipDBOObjects = context.scene.SAA_SkipDBOObjects
+        self.CreateSceneLights = context.scene.SAA_CreateSceneLights
+        self.CollectionObjects = context.scene.SAA_CollectionObjects
+        self.MergeMultiMeshObjects = context.scene.SAA_MergeMultiMeshObjects
+        self.HideAfterImport = context.scene.SAA_HideAfterImport
+        self.ExcludeAfterImport = context.scene.SAA_ExcludeAfterImport
+        self.ShowFullReport = context.scene.SAA_ShowFullReport
+
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
 
 
     # Checks that the 'resources' folder set in Preferences is valid
@@ -42,7 +69,10 @@ class addonMenuItem(Operator, ImportHelper):
     # Greys-out the Import sub-menu otherwise.
     @classmethod
     def poll(cls,context):
+        swtor_resources_folderpath = context.preferences.addons
+        
         swtor_resources_folderpath = context.preferences.addons[__package__].preferences.swtor_resources_folderpath
+        
         if Path(swtor_resources_folderpath).exists() and ("gr2" in dir(bpy.ops.import_mesh)):
             return True
         else:
@@ -51,64 +81,82 @@ class addonMenuItem(Operator, ImportHelper):
     
 
 
-    # ImportHelper mixin class uses this
-    filename_ext = ".json"
+    # ImportHelper mixin class' properties
+    # (pay attention to their types)
 
+    # Filetype filter
     filter_glob: StringProperty(
         default="*.json",
         options={'HIDDEN'},
         maxlen=255,  # Max internal buffer length, longer would be clamped.
     )
+    
     # Selected files
     files: CollectionProperty(type=bpy.types.PropertyGroup)
+    
+    # Filepath property
+    # Always a single one even when selecting multiple files.
+    # If none selected, it gets the directory, with a trailing final separator
+    filepath: bpy.props.StringProperty(subtype="FILE_PATH")
+
+    # Filename property
+    filename: bpy.props.StringProperty()
+
+    # Directory property
+    directory: bpy.props.StringProperty()
 
 
 
     # List of operator properties, the attributes will be assigned
     # to the class instance from the operator settings before calling.
-    SAAboolApplyFinalRotation: BoolProperty(
+    ApplyFinalRotation: BoolProperty(
         name="Apply Final Rotation",
         description="Disable to skip final rotation. All objects will need to be rotated X Axis 90 Degrees",
         default=True,
     )
-    SAAboolApplySceneScale: BoolProperty(
+    ApplyMaterials: BoolProperty(
+        name="Apply Materials",
+        description="Apply materials to the objects based on matching .mat files info in Resources",
+        default=True,
+    )
+    ApplySceneScale: BoolProperty(
         name="Apply Scene Scale",
         description="Automatically scale the entire scene after import by 10x to better match Blender Units",
         default=False,
     )
-    SAAboolSkipDBOObjects: BoolProperty(
+    SkipDBOObjects: BoolProperty(
         name="Skip dbo Objects",
         description="Don't import design blockout (DBO) objects such as blockers, portals, etc",
         default=True,
     )
-    SAAboolCreateSceneLights: BoolProperty(
+    CreateSceneLights: BoolProperty(
         name="Create Scene Lights",
         description="Automatically create basic scene lighting based on in game lighting nodes.\nIf they exceed the amount of 100, they will be created\nas Excluded From The View Layer for performance reasons",
         default=False,
     )
-    SAAboolCollectionObjects: BoolProperty(
-        name="Separate Object Types in Sub-Collections",
-        description="Separates objects, terrains and lights in per-Area Children Collections",
+    CollectionObjects: BoolProperty(
+        name="Separate Object Types in Collections",
+        description="Separates objects, terrains and lights in per-Area children Collections",
         default=False,
     )
-    SAAboolMergeMultiObjects: BoolProperty(
-        name="Merge Multi-Objects",
-        description="Joins single .gr2 file-originated multi-objects\ninto single objects",
+    MergeMultiMeshObjects: BoolProperty(
+        name="Merge Multi-Mesh Objects",
+        description="Joins single .gr2 file-originated multi-mesh objects\ninto single objects",
         default=False,
     )
-    SAAboolHideAfterImport: BoolProperty(
+    ShowFullReport: BoolProperty(
+        name="Show Full Report In Terminal",
+        description="If checked, a full length report will be produced, including not just errors but importing successes, too.\n\nFull length reports may exceed the Console's default capacity and become truncated.\nTo avoid that, increase that setting accordingly, around 500 lines per expected .json file,\nin your Operating System's Terminal app or in your IDE (Integrated Development Environment)",
+        default=False,
+    )
+    HideAfterImport: BoolProperty(
         name="Hide Objects After Importing",
         description="Imported Area objects are hidden ('eye' icon in Outliner, 'h' shortcut) to keep Blender\nmore responsive when having massive amounts of objects per individual Collections.\n\nLag could persist if the Outliner is overloaded, but it should be far more tolerable.\n\nRecommended when importing .json files weighting several MegaBytes each",
         default=False,
     )
-    SAAboolExcludeAfterImport: BoolProperty(
+    ExcludeAfterImport: BoolProperty(
         name="Exclude Collections After Importing",
         description="Resulting Collections are excluded (checkbox in Outliner, 'e' shortcut')\nto keep Blender fully responsive and be able to manage them without lag.\n\nExcluded Collections won't list their objects in the Outliner: that's normal.\n\nRecommended when importing a massive number of areas, such as whole worlds.\n\n(Excluding Collections resets the hide/show state of the Collections' contents.\nHide Objects After Importing won't have an effect if this option is on)",
-        default=False,
-    )
-    SAAboolShowFullReport: BoolProperty(
-        name="Show Full Report In Terminal",
-        description="If checked, a full length report will be produced, including not just errors but importing successes, too.\n\nFull length reports may exceed the Console's default capacity and become truncated.\nTo avoid that, increase that setting accordingly, around 500 lines per expected .json file,\nin your Operating System's Terminal app or in your IDE (Integrated Development Environment)",
         default=False,
     )
 
@@ -127,9 +175,29 @@ class addonMenuItem(Operator, ImportHelper):
 
     def execute(self, context):
         
-        if self.files[0].name == "":
+        if self.filepath == self.directory:
+            # When nothing is selected, self.filepath gets the directory too, so…
             self.report({'ERROR'}, "No files selected")
             return {'CANCELLED'}
+
+
+
+        # if this is in invoke() already it isn't necessary here
+        
+        # # Match properties to UI's checkboxes
+        # self.ApplyFinalRotation = context.scene.SAA_ApplyFinalRotation
+        # self.ApplyMaterials = context.scene.SAA_ApplyMaterials
+        # self.ApplySceneScale = context.scene.SAA_ApplySceneScale
+        # self.SkipDBOObjects = context.scene.SAA_SkipDBOObjects
+        # self.CreateSceneLights = context.scene.SAA_CreateSceneLights
+        # self.CollectionObjects = context.scene.SAA_CollectionObjects
+        # self.MergeMultiMeshObjects = context.scene.SAA_MergeMultiMeshObjects
+        # self.HideAfterImport = context.scene.SAA_HideAfterImport
+        # self.ExcludeAfterImport = context.scene.SAA_ExcludeAfterImport
+        # self.ShowFullReport = context.scene.SAA_ShowFullReport
+
+
+
 
 
         # Terminal's VT100 escape codes (most terminals understand them).
@@ -142,7 +210,7 @@ class addonMenuItem(Operator, ImportHelper):
 
         # If Full Reports in Terminal are selected,
         # don't use the terminal code for backtracking a line
-        if self.SAAboolShowFullReport is True:
+        if self.ShowFullReport is True:
             LINEBACK = ""
         else:
             LINEBACK = LINE_BACK_1ST_COL + CLEAR_EOL
@@ -157,7 +225,7 @@ class addonMenuItem(Operator, ImportHelper):
         print("SWTOR AREA ASSEMBLER")
         print("####################")
         print()        
-        
+        bpy.context.window.cursor_set("WAIT")
 
         # Open all the folders and files necessary for the addon's workings
         spn_table_available = False
@@ -165,6 +233,9 @@ class addonMenuItem(Operator, ImportHelper):
 
 
         # get the folder
+        # We derive it from the filepath because when called as an
+        # operator we don't get a directory from ImportHelper.
+        # (os.path.dirname omits the separator after the directory)
         folder = (os.path.dirname(self.filepath))
 
         # Get the extracted SWTOR assets' "resources" folder from the add-on's preferences. 
@@ -230,7 +301,16 @@ class addonMenuItem(Operator, ImportHelper):
 
         print("\n\nMERGING DATA FROM .JSON FILES:\n------------------------------\n")
 
-        for filepath in self.files:
+        # When being called as an operator, take care of filepaths
+        # being fed through ImportHelper's self.filepath or self.files
+        if not self.files:
+            # Make sure a single object works as a list for the loop.
+            filepaths = [Path(self.filepath)]
+        else:
+            filepaths = self.files
+
+
+        for filepath in filepaths:
 
             # generate full path to file
             json_filepath = (os.path.join(folder, filepath.name))
@@ -293,7 +373,7 @@ class addonMenuItem(Operator, ImportHelper):
                          ".lit" in swtor_filepath or
                          ".mag" in swtor_filepath or
                          ".spn_p" in swtor_filepath or
-                         ("dbo" in swtor_filepath and self.SAAboolSkipDBOObjects == False) )
+                         ("dbo" in swtor_filepath and self.SkipDBOObjects == False) )
                          and not "_fadeportal_" in swtor_filepath
                         ):
                     
@@ -401,9 +481,9 @@ class addonMenuItem(Operator, ImportHelper):
             else:
                 location_collection = bpy.data.collections[json_name]
 
-            if self.SAAboolCollectionObjects == True:
+            if self.CollectionObjects == True:
                 # Location's lights if the user wants them (yes by default)
-                if self.SAAboolCreateSceneLights == True:
+                if self.CreateSceneLights == True:
                     if not (json_name + " - Lights") in bpy.data.collections:
                         location_lights_collection  = bpy.data.collections.new(json_name + " - Lights")
                         location_collection.children.link(location_lights_collection)
@@ -431,7 +511,7 @@ class addonMenuItem(Operator, ImportHelper):
             # a single one for all the Addon's run is a bit arbitrary, but it might be interesting for,
             # say, setting a common light intensity and color per room and the like.
 
-            if self.SAAboolCreateSceneLights == True:
+            if self.CreateSceneLights == True:
                 light_data = bpy.data.lights.new(name= json_name, type= "POINT")
                 light_data.energy = 2
 
@@ -522,7 +602,7 @@ class addonMenuItem(Operator, ImportHelper):
                     swtor_filepath.endswith(".hms") or
                     swtor_filepath.endswith(".mag") or
                     swtor_filepath.endswith(".spn_p") or
-                    ("dbo" in swtor_filepath and self.SAAboolSkipDBOObjects == False)
+                    ("dbo" in swtor_filepath and self.SkipDBOObjects == False)
                     ):
                 continue
             # delete preceding directory separator if it exists. It shouldn't vary so much
@@ -548,9 +628,9 @@ class addonMenuItem(Operator, ImportHelper):
 
                 # LIGHT OBJECT. ----------------------------------
 
-                if self.SAAboolCreateSceneLights == True:
+                if self.CreateSceneLights == True:
                     # Collection where the light object will be moved to
-                    if self.SAAboolCollectionObjects == True:
+                    if self.CollectionObjects == True:
                         location_lights_collection  = bpy.data.collections[json_name + " - Lights"]
                     else:
                         location_lights_collection  = bpy.data.collections[json_name]
@@ -576,7 +656,7 @@ class addonMenuItem(Operator, ImportHelper):
                     continue
 
                 # Collection where the terrain object will be moved to
-                if self.SAAboolCollectionObjects == True:
+                if self.CollectionObjects == True:
                     location_terrains_collection  = bpy.data.collections[json_name + " - Terrain"]
                 else:
                     location_terrains_collection  = bpy.data.collections[json_name]
@@ -625,7 +705,7 @@ class addonMenuItem(Operator, ImportHelper):
                 blender_object.empty_display_type = 'CUBE'
                 
                 # Collection where the Empty will be moved to
-                if self.SAAboolCollectionObjects == True:
+                if self.CollectionObjects == True:
                     location_objects_collection = bpy.data.collections[json_name + " - Objects"]
                 else:
                     location_objects_collection = bpy.data.collections[json_name]
@@ -662,7 +742,7 @@ class addonMenuItem(Operator, ImportHelper):
 
 
                 # Collection where the objects will be moved to
-                if self.SAAboolCollectionObjects == True:
+                if self.CollectionObjects == True:
                     location_objects_collection = bpy.data.collections[json_name + " - Objects"]
                 else:
                     location_objects_collection = bpy.data.collections[json_name]
@@ -756,7 +836,7 @@ class addonMenuItem(Operator, ImportHelper):
                     # If object is a dbo, replace it with an Empty to
                     # cover for it being a parent object
                     if swtor_name.startswith("dbo"):
-                        if self.SAAboolSkipDBOObjects == True:
+                        if self.SkipDBOObjects == True:
                             blender_object = replace_with_empty(blender_object)
 
                             link_objects_to_collection(blender_object, location_objects_collection, move = True)
@@ -790,7 +870,7 @@ class addonMenuItem(Operator, ImportHelper):
 
                         # Check object's name and materials to detect discardable ones.
                         is_discardable = False
-                        if self.SAAboolSkipDBOObjects == True:
+                        if self.SkipDBOObjects == True:
                             if imported_object.name.startswith("dbo"):
                                 is_discardable = True
                             else:
@@ -837,7 +917,7 @@ class addonMenuItem(Operator, ImportHelper):
                     # a main one to parent the rest to. We go for the one
                     # whose name is closest to the .gr2 filename.
                     if len(imported_objects) > 1:
-                        if self.SAAboolMergeMultiObjects == False:
+                        if self.MergeMultiMeshObjects == False:
                             multi_object_data_list = []
 
                             parent_name = imported_objects_meshnames_and_names[ find_closest_match(list(imported_objects_meshnames_and_names), swtor_name) ]
@@ -997,19 +1077,20 @@ class addonMenuItem(Operator, ImportHelper):
         print(LINEBACK + "DONE!")
         
 
+
     # -------------------------------------------------------------------------------
     # FINAL ROTATION OF THE WHOLE AREA ----------------------------------------------
     # -------------------------------------------------------------------------------
 
         selectparents()
 
-        if self.SAAboolApplyFinalRotation is True:
+        if self.ApplyFinalRotation is True:
             print("\n\nFINAL SCENE ROTATION:\n---------------------\n")
             finalrotation()
             # finalrotationbymethod()
             print(LINEBACK + "DONE!")
 
-        if self.SAAboolApplySceneScale is True:
+        if self.ApplySceneScale is True:
             print("\n\nFINAL SCENE SCALING:\n--------------------\n")
             scalescene()
             print(LINEBACK + "DONE!")
@@ -1017,7 +1098,13 @@ class addonMenuItem(Operator, ImportHelper):
         deselectall()
 
 
-        
+    # -------------------------------------------------------------------------------
+    # APPLYING MATERIALS ------------------------------------------------------------
+    # -------------------------------------------------------------------------------
+
+        if self.ApplyMaterials is True:
+            print("\n\nAPPLYING MATERIALS:\n-------------------\n")
+            bpy.ops.swtor.process_named_mats(use_selection_only=False)
 
 
     # -------------------------------------------------------------------------------
@@ -1025,14 +1112,14 @@ class addonMenuItem(Operator, ImportHelper):
     # -------------------------------------------------------------------------------
 
         # If number of "imported" lights exceeds 100, exclude their collections from view
-        if self.SAAboolCreateSceneLights and Lights_count > 100:
+        if self.CreateSceneLights and Lights_count > 100:
             view_layer = bpy.context.view_layer
             for collection in view_layer.layer_collection.children:
                 iterate_collections(collection, exclude_collection_lights)
 
 
         # If Hide after Import is on, hide area objects from view
-        if self.SAAboolHideAfterImport:
+        if self.HideAfterImport:
             print("\n\nHIDING OBJECTS FROM VIEW\n------------------------\n")
             view_layer = bpy.context.view_layer
             for collection in bpy.data.collections:
@@ -1044,7 +1131,7 @@ class addonMenuItem(Operator, ImportHelper):
 
         # If Exclude after Import is on, exclude area Collections from view
         # (but not its Objects and Terrains' sub-Collections)
-        if self.SAAboolExcludeAfterImport:
+        if self.ExcludeAfterImport:
             print("\n\nEXCLUDING COLLECTIONS FROM VIEWLAYER\n------------------------------------\n")
             view_layer = bpy.context.view_layer
             for collection in view_layer.layer_collection.children:
@@ -1064,15 +1151,16 @@ class addonMenuItem(Operator, ImportHelper):
         
         print("\n\n")
         print("SETTINGS USED:\n")
-        print("SKIP DBO OBJECTS: ", str(self.SAAboolSkipDBOObjects))
-        print("ADD PLACEHOLDER LIGHTS: ", str(self.SAAboolCreateSceneLights))
-        print("MERGE MULTI-MESH OBJECTS ", str(self.SAAboolMergeMultiObjects))
-        print("APPLY FINAL ROTATION: ", str(self.SAAboolApplyFinalRotation))
-        print("APPLY SCENE SCALE: ", str(self.SAAboolApplySceneScale))
-        print("HIDE OBJECTS AFTER IMPORT: ", str(self.SAAboolHideAfterImport))
-        print("EXCLUDE COLLECTIONS AFTER IMPORT: ", str(self.SAAboolExcludeAfterImport))
+        print("SKIP DBO OBJECTS: ", str(self.SkipDBOObjects))
+        print("ADD PLACEHOLDER LIGHTS: ", str(self.CreateSceneLights))
+        print("MERGE MULTI-MESH OBJECTS ", str(self.MergeMultiMeshObjects))
+        print("APPLY FINAL ROTATION: ", str(self.ApplyFinalRotation))
+        print("APPLY MATERIALS: ", str(self.ApplyMaterials))
+        print("APPLY SCENE SCALE: ", str(self.ApplySceneScale))
+        print("HIDE OBJECTS AFTER IMPORT: ", str(self.HideAfterImport))
+        print("EXCLUDE COLLECTIONS AFTER IMPORT: ", str(self.ExcludeAfterImport))
         print("------------------------------------------")
-        if self.SAAboolCreateSceneLights and Lights_count > 100:
+        if self.CreateSceneLights and Lights_count > 100:
             print("Number of lights in the area exceeds 100.")
             print("Their Collections have been hidden to help")
             print("Blender's responsiveness.")
@@ -1091,27 +1179,74 @@ class addonMenuItem(Operator, ImportHelper):
     
 
 
-# Only needed if you want to add into a dynamic menu.
-def menu_func_import(self, context):
-    self.layout.operator(addonMenuItem.bl_idname, text="SWTOR (area .json)")
+
+
 
 
 
 
 # Register and add to the "file selector" menu (required to use F3 search "Text Import Operator" for quick access).
 def register():
-    bpy.utils.register_class(addonMenuItem)
-    bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
-    # Registering the checkbox properties in bpy.types.WindowManager, we preserve
-    # our choices at the application level instead of having them reset every time
-    # we use the addon.
-    # bpy.types.WindowManager.my_addon = bpy.props.PointerProperty(type=MyAddonSettings)
+
+    bpy.types.Scene.SAA_ApplyFinalRotation = bpy.props.BoolProperty(
+        description="Disable to skip final rotation. All objects will need to be rotated X Axis 90 Degrees",
+        default=True,
+    )
+    bpy.types.Scene.SAA_ApplyMaterials = bpy.props.BoolProperty(
+        description="Apply materials to the objects based on matching .mat files info in Resources",
+        default=True,
+    )
+    bpy.types.Scene.SAA_ApplySceneScale = bpy.props.BoolProperty(
+        description="Automatically scale the entire scene after import by 10x to better match Blender Units",
+        default=False,
+    )
+    bpy.types.Scene.SAA_SkipDBOObjects = bpy.props.BoolProperty(
+        description="Don't import design blockout (DBO) objects such as blockers, portals, etc",
+        default=True,
+    )
+    bpy.types.Scene.SAA_CreateSceneLights = bpy.props.BoolProperty(
+        description="Automatically create basic scene lighting based on in game lighting nodes.\nIf they exceed the amount of 100, they will be created\nas Excluded From The View Layer for performance reasons",
+        default=False,
+    )
+    bpy.types.Scene.SAA_CollectionObjects = bpy.props.BoolProperty(
+        description="Separates objects, terrains and lights in per-Area children Collections",
+        default=False,
+    )
+    bpy.types.Scene.SAA_MergeMultiMeshObjects = bpy.props.BoolProperty(
+        description="Joins single .gr2 file-originated multi-mesh objects\ninto single objects",
+        default=False,
+    )
+    bpy.types.Scene.SAA_HideAfterImport = bpy.props.BoolProperty(
+        description="Imported Area objects are hidden ('eye' icon in Outliner, 'h' shortcut) to keep Blender\nmore responsive when having massive amounts of objects per individual Collections.\n\nLag could persist if the Outliner is overloaded, but it should be far more tolerable.\n\nRecommended when importing .json files weighting several MegaBytes each",
+        default=False,
+    )
+    bpy.types.Scene.SAA_ExcludeAfterImport = bpy.props.BoolProperty(
+        description="Resulting Collections are excluded (checkbox in Outliner, 'e' shortcut')\nto keep Blender fully responsive and be able to manage them without lag.\n\nExcluded Collections won't list their objects in the Outliner: that's normal.\n\nRecommended when importing a massive number of areas, such as whole worlds.\n\n(Excluding Collections resets the hide/show state of the Collections' contents.\nHide Objects After Importing won't have an effect if this option is on)",
+        default=False,
+    )
+    bpy.types.Scene.SAA_ShowFullReport = bpy.props.BoolProperty(
+        description="If checked, a full length report will be produced, including not just errors but importing successes, too.\n\nFull length reports may exceed the Console's default capacity and become truncated.\nTo avoid that, increase that setting accordingly, around 500 lines per expected .json file,\nin your Operating System's Terminal app or in your IDE (Integrated Development Environment)",
+        default=False,
+    )
+
+    bpy.utils.register_class(SWTOR_OT_area_assembler)
+    
 
 
 def unregister():
-    bpy.utils.unregister_class(addonMenuItem)
-    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
-    # bpy.utils.unregister_class(MyAddonSettings)
+    bpy.utils.unregister_class(SWTOR_OT_area_assembler)
+    
+    del bpy.types.Scene.SAA_ApplyFinalRotation
+    del bpy.types.Scene.SAA_ApplyMaterials
+    del bpy.types.Scene.SAA_ApplySceneScale
+    del bpy.types.Scene.SAA_SkipDBOObjects
+    del bpy.types.Scene.SAA_CreateSceneLights
+    del bpy.types.Scene.SAA_CollectionObjects
+    del bpy.types.Scene.SAA_MergeMultiMeshObjects
+    del bpy.types.Scene.SAA_HideAfterImport
+    del bpy.types.Scene.SAA_ExcludeAfterImport
+    del bpy.types.Scene.SAA_ShowFullReport
+
 
 
 if __name__ == "__main__":
