@@ -1,24 +1,29 @@
 # SWTOR Area Assembler
 ## by ZeroGravitas and Crunch
-swtor_area_assembler is a Blender addon that imports Jedipedia.com's **[File Reader](https://swtor.jedipedia.net/reader)**-exported .json location data into Blender and parses it to auto-import and assemble the area's objects. It shows up in Blender's Import menu. If it appears greyed out, that means it lacks one or both of the following:
+The **SWTOR Area Assembler** is a Blender add-on that imports and assembles Star Wars: The Old Republic (SWTOR) game locations. It reads Jedipedia.com's **[File Reader](https://swtor.jedipedia.net/reader)**-exported .json area data to auto-import and assemble the area's objects.
 
-* The latest version of SWTOR Slicers' [.gr2 Importer Addon](https://github.com/SWTOR-Slicers/Granny2-Plug-In-Blender-2.8x),
-in order to be able to import SWTOR objects into Blender. If you are still using the Legacy version, you can have both installed and coexisting. Just activate the Modern one before using the swtor_area_assembler addon.
-* Setting in the addon's preferences the path to a "resources" folder in a SWTOR assets extraction produced by apps such as Slicers GUI or EasyMYP.
-* This Addon only imports the area's objects. In order to texture them, it is recommended to use the **[ZG SWTOR Tools](https://github.com/SWTOR-Slicers/ZG-SWTOR-Tools)**' materials processor.
+**(This tool is also available as part of the [ZeroGravitas SWTOR Tools Add-on](https://github.com/SWTOR-Slicers/ZG-SWTOR-Tools))**
 
-We advise to toggle Blender's System Console to watch the addon's progress when in use, as there are no other progress indicators yet. Some errors will inevitably arise, as this addon doesn't cover yet all area object cases (and sometimes the data includes objects that seem to have been deprecated), but despite them it ought to still be able to complete the task.
+### Full usage guide **[here](https://github.com/SWTOR-Slicers/WikiPedia/wiki/Assembling-SWTOR-Game-Areas-via-the-SWTOR-Area-Assembler-Addon-for-Blender)**.
+
 
 ### Download the latest version of the Addon from **[here](https://github.com/SWTOR-Slicers/SWTOR-Area-Assembler/releases)**.
 
-### Full usage guide **[here](https://github.com/SWTOR-Slicers/WikiPedia/wiki/Assembling-SWTOR-Game-Areas-via-the-SWTOR-Area-Assembler-Addon-for-Blender)**.
 ___
 
-CHANGELOG:
+## CHANGELOG:
 
+**v.1.4.0: NEW SIDEBAR USER INTERFACE. BLENDER 4.0-COMPATIBLE (see caveat). Materials Processor and Collections tools.**
+* New panel-based UI (in the 3D View's Sidebar), to keep pace with the ZeroGravitas SWTOR Tools version.
+* Blender 4.0-compatible (as long as a 4.0-compatible version of the .gr2 Importer Add-on is installed, too).
+* Auto-texturing by default.
+* New Named Materials Processor Tool.
+* New Collections Visibility Tool.
+---
 
-**V.1.3.2: Addon-crashing bug corrected:**
-FXspec-driven elements in .dyn objects weren't being properly filtered out and could crash the importing process (we are still looking at how to handle them in some minimum fashion).
+**V.1.3.2: LAST IMPORT MENU-BASED VERSION.** Further versions will use a Panel in the Sidebar.
+
+* **Addon-crashing bug corrected**: FXspec-driven elements in .dyn objects weren't being properly filtered out and could crash the importing process (we are still looking at how to handle them in some minimum fashion).
 * There's still an issue with some collision objects being parents of others. Somehow they are being filtered out even when not meant to. Investigating…
 ___
 **V.1.3.1: Addon-crashing bug corrected:**
