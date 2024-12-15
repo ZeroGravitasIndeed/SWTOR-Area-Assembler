@@ -1,3 +1,6 @@
+## As this standalone Add-on is falling behind the version integrated in the ZG SWTOR Tools in compatibility and features, we are deprecating it. Please [download and use the ZG SWTOR Tools Add-on, instead](https://github.com/SWTOR-Slicers/ZG-SWTOR-Tools).
+
+
 # SWTOR Area Assembler
 ## by ZeroGravitas and Crunch
 The **SWTOR Area Assembler** is a Blender add-on that imports and assembles Star Wars: The Old Republic (SWTOR) game locations. It reads Jedipedia.com's **[File Reader](https://swtor.jedipedia.net/reader)**-exported .json area data to auto-import and assemble the area's objects.
